@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config_common.h"
+// #include "config_common.h"
 
 /* RP2040 I2C setup */
 #define I2C_DRIVER I2CD1
@@ -13,6 +13,3 @@
 /* Matrix size */
 #define MATRIX_ROWS 8
 #define MATRIX_COLS 8
-
-/* Diode direction */
-#define DIODE_DIRECTION COL2ROW
