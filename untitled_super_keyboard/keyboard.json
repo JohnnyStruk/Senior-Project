@@ -10,10 +10,6 @@
         "mousekey": true,
         "nkro": true
     },
-    "matrix_pins": {
-        "rows": ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7"],
-        "cols": ["B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7"]
-    },
     "processor": "RP2040",
     "url": "",
     "usb": {
