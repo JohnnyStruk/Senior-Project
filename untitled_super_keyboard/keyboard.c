@@ -8,8 +8,10 @@ void keyboard_pre_init_kb(void) {
 
     // Debug confirmation
     dprintf("MCP23017 initialized on address 0x24\n");
+
+    keyboard_pre_init_user();
 }
 
 void keyboard_post_init_kb(void) {
-    keybord_post_init_user();
+    keyboard_post_init_user();
 }

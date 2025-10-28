@@ -10,6 +10,11 @@
 #define MATRIX_ROWS 8
 #define MATRIX_COLS 8
 
+/* Prevent issues with interrupt pins */
+#define MCP23017_INTB_PIN   NO_PIN
+#define MCP23017_INTA_PIN   NO_PIN
+#define MCP23017_RESET_PIN  NO_PIN
+
 /* MCP23017 addresses */
 #define MCP23017_ADDRESSES {0x24}
 #define MCP23017_ROW_PINS { B0, B1, B2, B3, B4, B5, B6, B7 }
