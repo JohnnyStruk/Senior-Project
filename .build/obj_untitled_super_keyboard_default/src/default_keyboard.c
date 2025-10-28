@@ -32,7 +32,7 @@ __attribute__((weak)) const matrix_row_t matrix_mask[] = {
     0b00111111,
     0b00111111,
     0b00111111,
-    0b00010111,
+    0b00110111,
     0b00000000,
     0b00000000,
 };
@@ -45,6 +45,6 @@ __attribute__((weak)) const char chordal_hold_layout[MATRIX_ROWS][MATRIX_COLS] P
   'L', 'R', 'R', 'R', 'R', 'R', 
   'L', 'R', 'R', 'R', 'R', 'R', 
   'L', 'R', 'R', 'R', 'R', 'R', 
-  'L', 'L', 'R', 'R'
+  'L', 'L', 'R', 'R', 'R'
 );
 #endif
