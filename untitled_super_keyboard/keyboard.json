@@ -55,7 +55,8 @@
                 { "label": "Ctrl", "matrix": [5, 0], "x": 0, "y": 5, "w": 1.25 },
                 { "label": "Win", "matrix": [5, 1], "x": 1.25, "y": 5, "w": 1.25 },
                 { "label": "Alt", "matrix": [5, 2], "x": 2.5, "y": 5, "w": 1.25 },
-                { "label": "Space", "matrix": [5, 4], "x": 3.75, "y": 5, "w": 3.5 }
+                { "label": "Space", "matrix": [5, 4], "x": 3.75, "y": 5, "w": 1.75 },
+                { "label": "Space", "matrix": [5, 5], "x": 5.5, "y": 5, "w": 1.75 }
             ]
         }
     }
