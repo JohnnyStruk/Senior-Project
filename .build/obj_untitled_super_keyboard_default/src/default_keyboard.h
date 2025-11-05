@@ -31,13 +31,13 @@
 
 #define XXX KC_NO
 
-#define LAYOUT(k0A, k0B, k0C, k0D, k0E, k0F, k0G, k1A, k1B, k1C, k1D, k1E, k1F, k1G, k2A, k2B, k2C, k2D, k2E, k2F, k3A, k3B, k3C, k3D, k3E, k3F, k4A, k4B, k4C, k4D, k4E, k4F, k5A, k5B, k5C, k5E) { \
+#define LAYOUT(k0A, k0B, k0C, k0D, k0E, k0F, k0G, k1A, k1B, k1C, k1D, k1E, k1F, k1G, k2A, k2B, k2C, k2D, k2E, k2F, k3A, k3B, k3C, k3D, k3E, k3F, k4A, k4B, k4C, k4D, k4E, k4F, k5A, k5B, k5C, k5E, k5F) { \
     { k0A, k0B, k0C, k0D, k0E, k0F, k0G, XXX }, \
     { k1A, k1B, k1C, k1D, k1E, k1F, k1G, XXX }, \
     { k2A, k2B, k2C, k2D, k2E, k2F, XXX, XXX }, \
     { k3A, k3B, k3C, k3D, k3E, k3F, XXX, XXX }, \
     { k4A, k4B, k4C, k4D, k4E, k4F, XXX, XXX }, \
-    { k5A, k5B, k5C, XXX, k5E, XXX, XXX, XXX }, \
+    { k5A, k5B, k5C, XXX, k5E, k5F, XXX, XXX }, \
     { XXX, XXX, XXX, XXX, XXX, XXX, XXX, XXX }, \
     { XXX, XXX, XXX, XXX, XXX, XXX, XXX, XXX } \
 }
