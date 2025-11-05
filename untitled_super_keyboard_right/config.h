@@ -1,9 +1,16 @@
 #pragma once
 
+/* Required for Via integration */
+//#define VENDOR_ID 0xFEED
+//#define PRODUCT_ID 0x6061
+//#define DEVICE_VER 0x0001
+//#define MANUFACTURER Five Man Band but We All Play the Keyboard
+//#define PRODUCT Untitled Super Keyboard Right
+
 /* RP2040 I2C setup */
 #define I2C_DRIVER I2CD1
-#define I2C_SDA_PIN GP4
-#define I2C_SCL_PIN GP5
+#define I2C1_SDA_PIN GP4
+#define I2C1_SCL_PIN GP5
 #define I2C1_CLOCK_SPEED 400000
 
 /* Matrix size */
@@ -27,6 +34,7 @@
 #define DEBOUNCE 10
 #define MATRIX_IO_DELAY 30
 
+/* Lighting */
 #define WS2812_DI_PIN GP17
 #define RGBLIGHT_LED_COUNT 49
 #define RGBLIGHT_LIMIT_VAL 120

@@ -1,5 +1,12 @@
 #pragma once
 
+/* Required for Via integration */
+//#define VENDOR_ID 0xFEED
+//#define PRODUCT_ID 0x6060
+//#define DEVICE_VER 0x0001
+//#define MANUFACTURER Five Man Band but We All Play the Keyboard
+//#define PRODUCT Untitled Super Keyboard
+
 /* RP2040 I2C setup */
 #define I2C_DRIVER I2CD1
 #define I2C1_SDA_PIN GP4
@@ -23,3 +30,13 @@
 /* Tuning */
 #define DEBOUNCE 10
 #define MATRIX_IO_DELAY 30
+
+/* Lighting */
+#define WS2812_DI_PIN GP6
+#define RGBLIGHT_LED_COUNT 20
+#define RGBLIGHT_LIMIT_VAL 150
+#define RGBLIGHT_SLEEP
+#define RGBLIGHT_EFFECT_BREATHING
+#define RGBLIGHT_EFFECT_RAINBOW_MOOD
+#define RGBLIGHT_EFFECT_RAINBOW_SWIRL
+#define WS2812_DRIVER_VENDOR
