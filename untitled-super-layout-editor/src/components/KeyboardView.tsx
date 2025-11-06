@@ -25,29 +25,41 @@ export function KeyboardView({
   const { theme } = useTheme();
   const [hoveredHalf, setHoveredHalf] = useState<'left' | 'right' | null>(null);
 
-  const scale = 0.9; // Slightly smaller for better fit
+  const KEY_SIZE = 48;
+  const KEY_GAP = 4;
+  const scale = 0.8; // Scaled down to fit better in containers
 
-  const getKeyId = (keyData: KeyPosition, half: 'left' | 'right') => 
+  const getKeyId = (keyData: KeyPosition, half: 'left' | 'right') =>
     `${half}-${keyData.matrix[0]}-${keyData.matrix[1]}`;
 
-  const isKeySelected = (keyData: KeyPosition, half: 'left' | 'right') => 
+  const isKeySelected = (keyData: KeyPosition, half: 'left' | 'right') =>
     selectedKey === getKeyId(keyData, half);
 
   const handleKeyClick = (keyData: KeyPosition, half: 'left' | 'right') => {
     onKeySelect?.(keyData, half);
   };
 
-  // Calculate layout dimensions
-  const leftMaxX = Math.max(...leftHalfLayout.layout.map(k => k.x + (k.w || 1))) * 48 * scale;
-  const leftMaxY = Math.max(...leftHalfLayout.layout.map(k => k.y + (k.h || 1))) * 48 * scale;
-  const rightMaxX = Math.max(...rightHalfLayout.layout.map(k => k.x + (k.w || 1))) * 48 * scale;
-  const rightMaxY = Math.max(...rightHalfLayout.layout.map(k => k.y + (k.h || 1))) * 48 * scale;
+  // Calculate layout dimensions properly including gaps
+  const calculateDimensions = (layout: typeof leftHalfLayout) => {
+    const maxX = Math.max(...layout.layout.map(k => k.x + (k.w || 1)));
+    const maxY = Math.max(...layout.layout.map(k => k.y + (k.h || 1)));
+
+    // Width: (maxX * KEY_SIZE * scale) + (maxX * KEY_GAP)
+    // Height: (maxY * KEY_SIZE * scale) + (maxY * KEY_GAP)
+    const width = (maxX * KEY_SIZE * scale) + (maxX * KEY_GAP);
+    const height = (maxY * KEY_SIZE * scale) + (maxY * KEY_GAP);
+
+    return { width, height };
+  };
+
+  const leftDims = calculateDimensions(leftHalfLayout);
+  const rightDims = calculateDimensions(rightHalfLayout);
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-8">
+    <div className="w-full h-full flex flex-col items-center justify-start p-4 overflow-auto">
       {/* Header */}
       <motion.div
-        className="text-center mb-8"
+        className="text-center mb-6"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -87,13 +99,13 @@ export function KeyboardView({
         </div>
       </motion.div>
 
-      {/* Split Keyboard Layout */}
-      <div className="flex justify-center items-start gap-16">
+      {/* Split Keyboard Layout - with responsive scaling */}
+      <div className="flex justify-center items-start gap-4 sm:gap-8 md:gap-12 lg:gap-16 scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 origin-top">
         
         {/* Left Half */}
         <motion.div
           className={cn(
-            "relative rounded-2xl p-6 transition-all duration-300",
+            "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
             theme.colors.surface,
             theme.colors.border,
             "border shadow-2xl",
@@ -101,8 +113,8 @@ export function KeyboardView({
             !connectedDevices.left && "opacity-60"
           )}
           style={{
-            width: `${leftMaxX + 48}px`,
-            height: `${leftMaxY + 48}px`
+            width: `${leftDims.width + 48}px`,
+            height: `${leftDims.height + 48}px`
           }}
           onMouseEnter={() => setHoveredHalf('left')}
           onMouseLeave={() => setHoveredHalf(null)}
@@ -174,7 +186,7 @@ export function KeyboardView({
         {/* Right Half */}
         <motion.div
           className={cn(
-            "relative rounded-2xl p-6 transition-all duration-300",
+            "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
             theme.colors.surface,
             theme.colors.border,
             "border shadow-2xl",
@@ -182,8 +194,8 @@ export function KeyboardView({
             !connectedDevices.right && "opacity-60"
           )}
           style={{
-            width: `${rightMaxX + 48}px`,
-            height: `${rightMaxY + 48}px`
+            width: `${rightDims.width + 48}px`,
+            height: `${rightDims.height + 48}px`
           }}
           onMouseEnter={() => setHoveredHalf('right')}
           onMouseLeave={() => setHoveredHalf(null)}
