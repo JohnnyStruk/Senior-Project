@@ -13,12 +13,14 @@ interface KeyboardViewProps {
     left: boolean;
     right: boolean;
   };
+  getKeycode?: (keyId: string) => string | undefined;
 }
 
-export function KeyboardView({ 
-  selectedKey, 
+export function KeyboardView({
+  selectedKey,
   onKeySelect,
-  connectedDevices = { left: false, right: false }
+  connectedDevices = { left: false, right: false },
+  getKeycode
 }: KeyboardViewProps) {
   const { theme } = useTheme();
   const [hoveredHalf, setHoveredHalf] = useState<'left' | 'right' | null>(null);
@@ -131,15 +133,19 @@ export function KeyboardView({
           
           {/* Keys */}
           <div className="relative">
-            {leftHalfLayout.layout.map((keyData) => (
-              <Key
-                key={`left-${keyData.matrix[0]}-${keyData.matrix[1]}`}
-                keyData={keyData}
-                scale={scale}
-                isSelected={isKeySelected(keyData, 'left')}
-                onKeyClick={(keyData) => handleKeyClick(keyData, 'left')}
-              />
-            ))}
+            {leftHalfLayout.layout.map((keyData) => {
+              const keyId = getKeyId(keyData, 'left');
+              return (
+                <Key
+                  key={keyId}
+                  keyData={keyData}
+                  scale={scale}
+                  isSelected={isKeySelected(keyData, 'left')}
+                  assignedKeycode={getKeycode?.(keyId)}
+                  onKeyClick={(keyData) => handleKeyClick(keyData, 'left')}
+                />
+              );
+            })}
           </div>
         </motion.div>
 
@@ -208,15 +214,19 @@ export function KeyboardView({
           
           {/* Keys */}
           <div className="relative">
-            {rightHalfLayout.layout.map((keyData) => (
-              <Key
-                key={`right-${keyData.matrix[0]}-${keyData.matrix[1]}`}
-                keyData={keyData}
-                scale={scale}
-                isSelected={isKeySelected(keyData, 'right')}
-                onKeyClick={(keyData) => handleKeyClick(keyData, 'right')}
-              />
-            ))}
+            {rightHalfLayout.layout.map((keyData) => {
+              const keyId = getKeyId(keyData, 'right');
+              return (
+                <Key
+                  key={keyId}
+                  keyData={keyData}
+                  scale={scale}
+                  isSelected={isKeySelected(keyData, 'right')}
+                  assignedKeycode={getKeycode?.(keyId)}
+                  onKeyClick={(keyData) => handleKeyClick(keyData, 'right')}
+                />
+              );
+            })}
           </div>
         </motion.div>
       </div>

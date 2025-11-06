@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X } from "lucide-react";
+import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package } from "lucide-react";
 import { useTheme } from "./contexts/ThemeContext";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import { KeyboardView } from "./components/KeyboardView";
+import { KeycodePanel } from "./components/KeycodePanel";
 import { useKeyboard } from "./hooks/useKeyboard";
+import { useKeymap } from "./hooks/useKeymap";
 import type { KeyPosition } from "./types/keyboard";
+import type { Keycode } from "./data/keycodes";
 import { cn } from "./utils/cn";
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const { connectionState, connectHardware, connectDemo, disconnect, sendCommand } = useKeyboard();
+  const { currentLayer, assignKeycode, getKeycode } = useKeymap();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [showKeycodePanel, setShowKeycodePanel] = useState(false);
 
   const handleConnectHardware = async () => {
     const success = await connectHardware();
@@ -32,6 +37,24 @@ function AppContent() {
   const handleKeySelect = (keyData: KeyPosition, half: 'left' | 'right') => {
     const keyId = `${half}-${keyData.matrix[0]}-${keyData.matrix[1]}`;
     setSelectedKey(selectedKey === keyId ? null : keyId);
+    // Open keycode panel when a key is selected
+    if (selectedKey !== keyId) {
+      setShowKeycodePanel(true);
+    }
+  };
+
+  const handleKeycodeSelect = (keycode: Keycode) => {
+    if (selectedKey) {
+      assignKeycode(selectedKey, keycode);
+      console.log(`Assigned ${keycode.code} to key ${selectedKey}`);
+
+      // Send command to hardware if connected
+      if (connectionState.connected && !connectionState.demoMode) {
+        // VIA protocol: assign keycode
+        const payload = new Uint8Array([0x01, currentLayer, 0x00, 0x04]);
+        sendCommand(0, payload, selectedKey);
+      }
+    }
   };
 
   const handleSendCommand = async () => {
@@ -209,17 +232,52 @@ function AppContent() {
       </motion.header>
 
       {/* Main content */}
-      <main className="relative z-10 py-8">
-        {connectionState.connected ? (
-          <KeyboardView
-            selectedKey={selectedKey}
-            onKeySelect={handleKeySelect}
-            connectedDevices={{
-              left: connectionState.leftHalf,
-              right: connectionState.rightHalf
-            }}
+      <main className="relative z-10 flex h-[calc(100vh-80px)]">
+        {/* Keycode Panel - shown when connected */}
+        {connectionState.connected && showKeycodePanel && (
+          <KeycodePanel
+            onKeycodeSelect={handleKeycodeSelect}
+            selectedKeycode={selectedKey ? getKeycode(selectedKey) : null}
+            onClose={() => setShowKeycodePanel(false)}
           />
-        ) : (
+        )}
+
+        {/* Keyboard area */}
+        <div className="flex-1 overflow-auto py-8">
+          {connectionState.connected ? (
+            <>
+              {/* Toggle keycode panel button - only show when panel is closed */}
+              {!showKeycodePanel && (
+                <motion.button
+                  onClick={() => setShowKeycodePanel(true)}
+                  className={cn(
+                    "fixed top-20 left-4 z-20 p-3 rounded-xl transition-all",
+                    theme.colors.surface,
+                    theme.colors.border,
+                    "border backdrop-blur-sm shadow-lg hover:shadow-xl"
+                  )}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="Show Keycodes"
+                >
+                  <Package className={cn("w-5 h-5", theme.colors.text)} />
+                </motion.button>
+              )}
+
+              <KeyboardView
+                selectedKey={selectedKey}
+                onKeySelect={handleKeySelect}
+                connectedDevices={{
+                  left: connectionState.leftHalf,
+                  right: connectionState.rightHalf
+                }}
+                getKeycode={getKeycode}
+              />
+            </>
+          ) : (
           <motion.div 
             className="max-w-md mx-auto text-center mt-20"
             initial={{ opacity: 0, y: 20 }}
@@ -245,7 +303,6 @@ function AppContent() {
                 <p>Features:</p>
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Real-time key customization</li>
-                  <li>Beautiful glassmorphism interface</li>
                   <li>Multi-layer support</li>
                   <li>VIA protocol compatibility</li>
                   <li>Demo mode for testing without hardware</li>
@@ -253,7 +310,8 @@ function AppContent() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+          )}
+        </div>
       </main>
 
       {/* Action panel */}

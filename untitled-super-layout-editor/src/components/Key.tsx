@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import type { KeyPosition } from '../types/keyboard';
+import { findKeycode } from '../data/keycodes';
 import { cn } from '../utils/cn';
 
 interface KeyProps {
   keyData: KeyPosition;
   isSelected?: boolean;
-  keycode?: string;
+  assignedKeycode?: string; // QMK keycode like "KC_A"
   category?: 'basic' | 'modifier' | 'function' | 'navigation' | 'system' | 'layer';
   onKeyClick?: (keyData: KeyPosition) => void;
   scale?: number;
@@ -15,15 +16,18 @@ interface KeyProps {
 const KEY_SIZE = 48; // Base key size in pixels
 const KEY_GAP = 4; // Gap between keys
 
-export function Key({ 
-  keyData, 
-  isSelected = false, 
-  keycode, 
+export function Key({
+  keyData,
+  isSelected = false,
+  assignedKeycode,
   category = 'basic',
   onKeyClick,
-  scale = 1 
+  scale = 1
 }: KeyProps) {
   const { theme } = useTheme();
+
+  // Get keycode info if assigned
+  const keycodeInfo = assignedKeycode ? findKeycode(assignedKeycode) : null;
   
   const width = (keyData.w || 1) * KEY_SIZE * scale + ((keyData.w || 1) - 1) * KEY_GAP;
   const height = (keyData.h || 1) * KEY_SIZE * scale + ((keyData.h || 1) - 1) * KEY_GAP;
@@ -97,14 +101,19 @@ export function Key({
       <div className="relative z-10 flex flex-col items-center justify-center px-2 py-1">
         {/* Main key label */}
         <span className="text-xs font-semibold leading-none">
-          {keycode || keyData.label}
+          {keycodeInfo ? keycodeInfo.label : keyData.label}
         </span>
-        
-        {/* Secondary label for shifted characters */}
-        {keyData.label.length > 1 && keyData.label.includes('!') && (
-          <span className="text-[10px] opacity-60 leading-none mt-0.5">
-            {keyData.label.split('').find(char => char !== '!' && char !== keyData.label[0])}
+
+        {/* Show keycode if assigned and different from label */}
+        {keycodeInfo && keycodeInfo.label !== keyData.label && (
+          <span className="text-[9px] opacity-50 leading-none mt-0.5 font-mono">
+            {keyData.label}
           </span>
+        )}
+
+        {/* Assignment indicator */}
+        {keycodeInfo && (
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full shadow-sm" />
         )}
       </div>
       
