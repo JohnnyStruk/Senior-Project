@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package, Save, RotateCcw } from "lucide-react";
 import { useTheme } from "./contexts/ThemeContext";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import { KeyboardView } from "./components/KeyboardView";
@@ -13,10 +13,21 @@ import { cn } from "./utils/cn";
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
-  const { connectionState, connectHardware, connectDemo, disconnect, sendCommand } = useKeyboard();
-  const { currentLayer, assignKeycode, getKeycode } = useKeymap();
+  const { connectionState, connectHardware, connectDemo, disconnect } = useKeyboard();
+  const {
+    currentLayer,
+    assignKeycode,
+    getKeycode,
+    hasUnsavedChanges,
+    saveKeymap,
+    resetLayerToDefault,
+    switchLayer,
+    getLayerKeycodeCount,
+    maxLayers
+  } = useKeymap();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [showKeycodePanel, setShowKeycodePanel] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   const handleConnectHardware = async () => {
     const success = await connectHardware();
@@ -46,50 +57,182 @@ function AppContent() {
   const handleKeycodeSelect = (keycode: Keycode) => {
     if (selectedKey) {
       assignKeycode(selectedKey, keycode);
-      console.log(`Assigned ${keycode.code} to key ${selectedKey}`);
-
-      // Send command to hardware if connected
-      if (connectionState.connected && !connectionState.demoMode) {
-        // VIA protocol: assign keycode
-        const payload = new Uint8Array([0x01, currentLayer, 0x00, 0x04]);
-        sendCommand(0, payload, selectedKey);
-      }
+      console.log(`Assigned ${keycode.code} to key ${selectedKey} (Layer ${currentLayer})`);
     }
   };
 
-  const handleSendCommand = async () => {
-    if (selectedKey) {
-      // Example VIA command: change key in layer 0, row 0, col 0
-      const payload = new Uint8Array([0x01, 0x00, 0x00, 0x04]);
-      const success = await sendCommand(0, payload, selectedKey);
-      if (success) {
-        console.log("Command sent successfully for key:", selectedKey);
-      } else {
-        console.error("Failed to send command for key:", selectedKey);
-      }
+  const handleSaveChanges = () => {
+    const success = saveKeymap();
+    if (success) {
+      setShowSaveConfirmation(true);
+      setTimeout(() => setShowSaveConfirmation(false), 3000);
     }
   };
+
+  const handleResetLayer = () => {
+    if (confirm(`Reset Layer ${currentLayer} to default? This cannot be undone.`)) {
+      resetLayerToDefault(currentLayer);
+    }
+  };
+
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Animated background gradients */}
+      {/* Animated space background */}
       <div className="absolute inset-0">
-        <motion.div 
-          className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"
-          animate={{ 
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3]
-          }}
-          transition={{ duration: 8, repeat: Infinity }}
-        />
-        <motion.div 
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"
-          animate={{ 
-            scale: [1.2, 1, 1.2],
-            opacity: [0.5, 0.3, 0.5]
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
-        />
+        {theme.isDark ? (
+          <>
+            {/* Deep space gradient base */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900" />
+
+            {/* Floating nebula clouds */}
+            <motion.div
+              className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-500/15 rounded-full blur-3xl"
+              animate={{
+                x: [0, 100, 0],
+                y: [0, -50, 0],
+                scale: [1, 1.3, 1],
+                opacity: [0.2, 0.4, 0.2]
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/15 rounded-full blur-3xl"
+              animate={{
+                x: [0, -80, 0],
+                y: [0, 60, 0],
+                scale: [1.2, 1, 1.2],
+                opacity: [0.3, 0.5, 0.3]
+              }}
+              transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-0 left-1/3 w-[550px] h-[550px] bg-cyan-500/10 rounded-full blur-3xl"
+              animate={{
+                x: [0, -100, 0],
+                y: [0, -80, 0],
+                scale: [1, 1.4, 1],
+                opacity: [0.15, 0.35, 0.15]
+              }}
+              transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-blue-500/12 rounded-full blur-3xl"
+              animate={{
+                x: [0, 120, 0],
+                y: [0, 100, 0],
+                scale: [1.1, 1, 1.1],
+                opacity: [0.2, 0.4, 0.2]
+              }}
+              transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+            />
+
+            {/* Distant stars - small glowing dots */}
+            {[...Array(30)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  opacity: [0.2, 0.8, 0.2],
+                  scale: [1, 1.5, 1],
+                }}
+                transition={{
+                  duration: 3 + Math.random() * 4,
+                  repeat: Infinity,
+                  delay: Math.random() * 5,
+                  ease: "easeInOut"
+                }}
+              />
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Light mode - vibrant ethereal aura */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50" />
+
+            {/* Floating colorful auras */}
+            <motion.div
+              className="absolute top-0 left-1/4 w-[700px] h-[700px] bg-gradient-to-br from-blue-300/30 to-indigo-400/20 rounded-full blur-3xl"
+              animate={{
+                x: [0, 120, 0],
+                y: [0, -60, 0],
+                scale: [1, 1.4, 1],
+                opacity: [0.4, 0.6, 0.4]
+              }}
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute top-1/3 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-purple-300/25 to-pink-400/20 rounded-full blur-3xl"
+              animate={{
+                x: [0, -100, 0],
+                y: [0, 80, 0],
+                scale: [1.3, 1, 1.3],
+                opacity: [0.35, 0.55, 0.35]
+              }}
+              transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-0 left-1/3 w-[650px] h-[650px] bg-gradient-to-br from-cyan-300/30 to-blue-400/20 rounded-full blur-3xl"
+              animate={{
+                x: [0, -90, 0],
+                y: [0, -100, 0],
+                scale: [1.1, 1.5, 1.1],
+                opacity: [0.3, 0.5, 0.3]
+              }}
+              transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] bg-gradient-to-br from-orange-300/25 to-amber-400/15 rounded-full blur-3xl"
+              animate={{
+                x: [0, 110, 0],
+                y: [0, 70, 0],
+                scale: [1.2, 1, 1.2],
+                opacity: [0.35, 0.55, 0.35]
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute top-1/2 left-1/2 w-[550px] h-[550px] bg-gradient-to-br from-rose-300/20 to-pink-400/15 rounded-full blur-3xl"
+              animate={{
+                x: [0, -70, 0],
+                y: [0, -90, 0],
+                scale: [1, 1.3, 1],
+                opacity: [0.25, 0.45, 0.25]
+              }}
+              transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
+            />
+
+            {/* Floating light particles */}
+            {[...Array(20)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-2 h-2 rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  background: `radial-gradient(circle, ${
+                    ['rgba(147, 197, 253, 0.6)', 'rgba(196, 181, 253, 0.6)', 'rgba(251, 207, 232, 0.6)', 'rgba(254, 215, 170, 0.6)'][Math.floor(Math.random() * 4)]
+                  } 0%, transparent 70%)`
+                }}
+                animate={{
+                  y: [0, -30, 0],
+                  opacity: [0.3, 0.7, 0.3],
+                  scale: [1, 1.3, 1],
+                }}
+                transition={{
+                  duration: 4 + Math.random() * 3,
+                  repeat: Infinity,
+                  delay: Math.random() * 4,
+                  ease: "easeInOut"
+                }}
+              />
+            ))}
+          </>
+        )}
       </div>
 
       {/* Header */}
@@ -130,6 +273,46 @@ function AppContent() {
 
             {/* Controls */}
             <div className="flex items-center gap-3">
+              {/* Save button - only show when connected and has changes */}
+              {connectionState.connected && hasUnsavedChanges && (
+                <motion.button
+                  onClick={handleSaveChanges}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
+                    "transition-all duration-200",
+                    "bg-green-600 hover:bg-green-500",
+                    "text-white shadow-lg hover:shadow-xl active:scale-95"
+                  )}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </motion.button>
+              )}
+
+              {/* Reset layer button - only show when connected */}
+              {connectionState.connected && (
+                <motion.button
+                  onClick={handleResetLayer}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm",
+                    "transition-all duration-200",
+                    theme.colors.surface,
+                    theme.colors.surfaceHover,
+                    theme.colors.border,
+                    "border backdrop-blur-sm hover:shadow-lg"
+                  )}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  title={`Reset Layer ${currentLayer} to default`}
+                >
+                  <RotateCcw className={cn("w-4 h-4", "text-amber-500")} />
+                  <span className={theme.colors.text}>Reset Layer</span>
+                </motion.button>
+              )}
               {/* Connection button */}
               {!connectionState.connected ? (
                 <div className="flex items-center gap-2">
@@ -155,7 +338,7 @@ function AppContent() {
                     onClick={handleConnectDemo}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-                      "transition-all duration-200 border-2",
+                      "transition-all duration-200",
                       "bg-gradient-to-r from-cyan-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400",
                       "text-white shadow-lg hover:shadow-xl active:scale-95"
                     )}
@@ -251,7 +434,7 @@ function AppContent() {
                 <motion.button
                   onClick={() => setShowKeycodePanel(true)}
                   className={cn(
-                    "fixed top-20 left-4 z-20 p-3 rounded-xl transition-all",
+                    "fixed top-24 left-4 z-20 p-3 rounded-xl transition-all",
                     theme.colors.surface,
                     theme.colors.border,
                     "border backdrop-blur-sm shadow-lg hover:shadow-xl"
@@ -275,6 +458,13 @@ function AppContent() {
                   right: connectionState.rightHalf
                 }}
                 getKeycode={getKeycode}
+                currentLayer={currentLayer}
+                maxLayers={maxLayers}
+                onLayerSwitch={(layer) => {
+                  switchLayer(layer);
+                  setSelectedKey(null);
+                }}
+                getLayerKeycodeCount={getLayerKeycodeCount}
               />
             </>
           ) : (
@@ -314,55 +504,25 @@ function AppContent() {
         </div>
       </main>
 
-      {/* Action panel */}
-      {connectionState.connected && selectedKey && (
-        <motion.div
-          className={cn(
-            "fixed bottom-6 right-6 p-4 rounded-xl backdrop-blur-md border",
-            theme.colors.surface,
-            theme.colors.border,
-            "shadow-2xl"
-          )}
-          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300 }}
-        >
-          <p className={cn("text-sm font-medium mb-2", theme.colors.text)}>
-            Key Actions
-          </p>
-          <div className="space-y-2">
-            <motion.button
-              onClick={handleSendCommand}
-              className={cn(
-                "w-full px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                theme.colors.primary,
-                theme.colors.primaryHover,
-                "text-white"
-              )}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {connectionState.demoMode ? "Demo Command" : "Send Test Command"}
-            </motion.button>
-            
-            <motion.button
-              onClick={handleDisconnect}
-              className={cn(
-                "w-full px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                "bg-red-600/20 hover:bg-red-500/30 border border-red-500/40",
-                "text-red-200 hover:text-red-100"
-              )}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              {connectionState.demoMode ? "Exit Demo Mode" : "Disconnect"}
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
+      {/* Save confirmation toast */}
+      <AnimatePresence>
+        {showSaveConfirmation && (
+          <motion.div
+            className={cn(
+              "fixed top-24 right-6 px-4 py-3 rounded-lg shadow-2xl",
+              "bg-green-600 text-white font-medium",
+              "flex items-center gap-2 z-50"
+            )}
+            initial={{ opacity: 0, y: -20, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: -20, x: 20 }}
+          >
+            <Save className="w-4 h-4" />
+            Changes saved successfully!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

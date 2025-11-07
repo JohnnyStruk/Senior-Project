@@ -14,13 +14,21 @@ interface KeyboardViewProps {
     right: boolean;
   };
   getKeycode?: (keyId: string) => string | undefined;
+  currentLayer?: number;
+  maxLayers?: number;
+  onLayerSwitch?: (layer: number) => void;
+  getLayerKeycodeCount?: (layer: number) => number;
 }
 
 export function KeyboardView({
   selectedKey,
   onKeySelect,
   connectedDevices = { left: false, right: false },
-  getKeycode
+  getKeycode,
+  currentLayer = 0,
+  maxLayers = 16,
+  onLayerSwitch,
+  getLayerKeycodeCount
 }: KeyboardViewProps) {
   const { theme } = useTheme();
   const [hoveredHalf, setHoveredHalf] = useState<'left' | 'right' | null>(null);
@@ -57,88 +65,109 @@ export function KeyboardView({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-start p-4 overflow-auto">
-      {/* Header */}
-      <motion.div
-        className="text-center mb-6"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <h2 className={cn("text-3xl font-bold mb-2", theme.colors.text)}>
-          Split Keyboard Layout
-        </h2>
-        <p className={cn("text-sm", theme.colors.textSecondary)}>
-          Click any key to customize its function
-        </p>
-      </motion.div>
-
-      {/* Connection Status */}
-      <motion.div 
-        className="flex justify-center gap-6 mb-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            "w-3 h-3 rounded-full transition-all duration-300",
-            connectedDevices.left ? "bg-emerald-500 shadow-emerald-500/50" : "bg-gray-500"
-          )} />
-          <span className={cn("text-sm font-medium", theme.colors.textSecondary)}>
-            Left Half {connectedDevices.left ? "Connected" : "Disconnected"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            "w-3 h-3 rounded-full transition-all duration-300",
-            connectedDevices.right ? "bg-emerald-500 shadow-emerald-500/50" : "bg-gray-500"
-          )} />
-          <span className={cn("text-sm font-medium", theme.colors.textSecondary)}>
-            Right Half {connectedDevices.right ? "Connected" : "Disconnected"}
-          </span>
-        </div>
-      </motion.div>
-
-      {/* Split Keyboard Layout - with responsive scaling */}
-      <div className="flex justify-center items-start gap-4 sm:gap-8 md:gap-12 lg:gap-16 scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 origin-top">
-        
-        {/* Left Half */}
+      {/* Container that scales with keyboard */}
+      <div className="flex flex-col items-center scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100 origin-top">
+        {/* Header */}
         <motion.div
-          className={cn(
-            "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
-            theme.colors.surface,
-            theme.colors.border,
-            "border shadow-2xl",
-            hoveredHalf === 'left' && "shadow-indigo-500/20",
-            !connectedDevices.left && "opacity-60"
-          )}
-          style={{
-            width: `${leftDims.width + 48}px`,
-            height: `${leftDims.height + 48}px`
-          }}
-          onMouseEnter={() => setHoveredHalf('left')}
-          onMouseLeave={() => setHoveredHalf(null)}
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3, duration: 0.7, type: "spring" }}
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          {/* Left half label */}
-          <motion.div 
-            className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+          <h2 className={cn("text-3xl font-bold mb-2", theme.colors.text)}>
+            Split Keyboard Layout
+          </h2>
+          <p className={cn("text-sm mb-3", theme.colors.textSecondary)}>
+            Click any key to customize its function
+          </p>
+
+          {/* Layer Dropdown */}
+          <div className="flex items-center justify-center gap-2">
+            <label className={cn("text-sm font-medium", theme.colors.text)}>
+              Layer:
+            </label>
+            <select
+              value={currentLayer}
+              onChange={(e) => onLayerSwitch?.(Number(e.target.value))}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium",
+                "transition-all duration-200",
+                theme.colors.surface,
+                theme.colors.text,
+                theme.colors.border,
+                "border backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              )}
+            >
+              {Array.from({ length: maxLayers }, (_, i) => {
+                const count = getLayerKeycodeCount?.(i) || 0;
+                return (
+                  <option key={i} value={i}>
+                    Layer {i} {count > 0 ? `(${count} keys)` : '(empty)'}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </motion.div>
+
+        {/* Split Keyboard Layout */}
+        <div className="flex justify-center items-start gap-4 sm:gap-8 md:gap-12 lg:gap-16">
+
+        {/* Left Half Container */}
+        <div className="relative">
+          {/* Connection Status - Above Left Half */}
+          <motion.div
+            className="absolute -top-10 left-0 flex items-center gap-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.4 }}
           >
-            <span className={cn(
-              "text-lg font-semibold px-4 py-1 rounded-full",
-              theme.colors.surface,
-              theme.colors.text,
-              "backdrop-blur-md border",
-              theme.colors.border
-            )}>
-              Left Half
+            <div className={cn(
+              "w-2.5 h-2.5 rounded-full transition-all duration-300",
+              connectedDevices.left ? "bg-emerald-500 shadow-lg shadow-emerald-500/50" : "bg-gray-500"
+            )} />
+            <span className={cn("text-xs font-medium", theme.colors.textSecondary)}>
+              Left Half {connectedDevices.left ? "Connected" : "Disconnected"}
             </span>
           </motion.div>
+
+          {/* Left Half */}
+          <motion.div
+            className={cn(
+              "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
+              theme.colors.surface,
+              theme.colors.border,
+              "border shadow-2xl",
+              hoveredHalf === 'left' && "shadow-indigo-500/20",
+              !connectedDevices.left && "opacity-60"
+            )}
+            style={{
+              width: `${leftDims.width + 48}px`,
+              height: `${leftDims.height + 48}px`
+            }}
+            onMouseEnter={() => setHoveredHalf('left')}
+            onMouseLeave={() => setHoveredHalf(null)}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.7, type: "spring" }}
+          >
+            {/* Left half label */}
+            <motion.div
+              className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <span className={cn(
+                "text-lg font-semibold px-4 py-1 rounded-full",
+                theme.colors.surface,
+                theme.colors.text,
+                "backdrop-blur-md border",
+                theme.colors.border
+              )}>
+                Left Half
+              </span>
+            </motion.div>
 
           {/* Glassmorphism background */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/5 to-transparent" />
@@ -160,6 +189,7 @@ export function KeyboardView({
             })}
           </div>
         </motion.div>
+        </div>
 
         {/* Split Indicator */}
         <motion.div 
@@ -183,43 +213,61 @@ export function KeyboardView({
           </div>
         </motion.div>
 
-        {/* Right Half */}
-        <motion.div
-          className={cn(
-            "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
-            theme.colors.surface,
-            theme.colors.border,
-            "border shadow-2xl",
-            hoveredHalf === 'right' && "shadow-cyan-500/20",
-            !connectedDevices.right && "opacity-60"
-          )}
-          style={{
-            width: `${rightDims.width + 48}px`,
-            height: `${rightDims.height + 48}px`
-          }}
-          onMouseEnter={() => setHoveredHalf('right')}
-          onMouseLeave={() => setHoveredHalf(null)}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4, duration: 0.7, type: "spring" }}
-        >
-          {/* Right half label */}
-          <motion.div 
-            className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+        {/* Right Half Container */}
+        <div className="relative">
+          {/* Connection Status - Above Right Half */}
+          <motion.div
+            className="absolute -top-10 left-0 flex items-center gap-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.5 }}
           >
-            <span className={cn(
-              "text-lg font-semibold px-4 py-1 rounded-full",
-              theme.colors.surface,
-              theme.colors.text,
-              "backdrop-blur-md border",
-              theme.colors.border
-            )}>
-              Right Half
+            <div className={cn(
+              "w-2.5 h-2.5 rounded-full transition-all duration-300",
+              connectedDevices.right ? "bg-emerald-500 shadow-lg shadow-emerald-500/50" : "bg-gray-500"
+            )} />
+            <span className={cn("text-xs font-medium", theme.colors.textSecondary)}>
+              Right Half {connectedDevices.right ? "Connected" : "Disconnected"}
             </span>
           </motion.div>
+
+          {/* Right Half */}
+          <motion.div
+            className={cn(
+              "relative rounded-2xl p-6 transition-all duration-300 overflow-hidden",
+              theme.colors.surface,
+              theme.colors.border,
+              "border shadow-2xl",
+              hoveredHalf === 'right' && "shadow-cyan-500/20",
+              !connectedDevices.right && "opacity-60"
+            )}
+            style={{
+              width: `${rightDims.width + 48}px`,
+              height: `${rightDims.height + 48}px`
+            }}
+            onMouseEnter={() => setHoveredHalf('right')}
+            onMouseLeave={() => setHoveredHalf(null)}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, duration: 0.7, type: "spring" }}
+          >
+            {/* Right half label */}
+            <motion.div
+              className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <span className={cn(
+                "text-lg font-semibold px-4 py-1 rounded-full",
+                theme.colors.surface,
+                theme.colors.text,
+                "backdrop-blur-md border",
+                theme.colors.border
+              )}>
+                Right Half
+              </span>
+            </motion.div>
 
           {/* Glassmorphism background */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/5 to-transparent" />
@@ -241,6 +289,8 @@ export function KeyboardView({
             })}
           </div>
         </motion.div>
+        </div>
+        </div>
       </div>
 
       {/* Selected Key Info */}

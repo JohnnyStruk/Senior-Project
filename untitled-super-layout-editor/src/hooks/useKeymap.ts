@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Keycode } from '../data/keycodes';
+import { getDefaultKeymap, DEFAULT_LAYER_0 } from '../data/defaultKeymap';
 
 export interface KeymapEntry {
   keyId: string; // Format: "left-0-0" or "right-2-3"
@@ -11,12 +12,28 @@ export interface LayerKeymap {
 }
 
 const MAX_LAYERS = 16;
+const STORAGE_KEY = 'untitled-super-keyboard-keymap';
 
 export function useKeymap() {
   const [currentLayer, setCurrentLayer] = useState(0);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const [layers, setLayers] = useState<LayerKeymap[]>(() => {
-    // Initialize with empty layers
-    return Array(MAX_LAYERS).fill(null).map(() => ({}));
+    // Try to load from localStorage first
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === MAX_LAYERS) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse saved keymap:', e);
+      }
+    }
+
+    // If nothing saved or parse failed, use default keymap
+    return getDefaultKeymap();
   });
 
   // Assign a keycode to a key in the current layer
@@ -29,6 +46,7 @@ export function useKeymap() {
       };
       return newLayers;
     });
+    setHasUnsavedChanges(true);
   }, [currentLayer]);
 
   // Get the keycode for a specific key in the current layer
@@ -45,6 +63,7 @@ export function useKeymap() {
       newLayers[currentLayer] = layerCopy;
       return newLayers;
     });
+    setHasUnsavedChanges(true);
   }, [currentLayer]);
 
   // Switch to a different layer
@@ -102,12 +121,51 @@ export function useKeymap() {
         }
       });
       setLayers(newLayers);
+      setHasUnsavedChanges(true);
     }
+  }, []);
+
+  // Save current keymap to localStorage
+  const saveKeymap = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(layers));
+      setHasUnsavedChanges(false);
+      return true;
+    } catch (e) {
+      console.error('Failed to save keymap:', e);
+      return false;
+    }
+  }, [layers]);
+
+  // Reset a specific layer to default
+  const resetLayerToDefault = useCallback((layerIndex: number) => {
+    if (layerIndex >= 0 && layerIndex < MAX_LAYERS) {
+      setLayers(prevLayers => {
+        const newLayers = [...prevLayers];
+
+        // Layer 0 resets to DEFAULT_LAYER_0, others reset to empty
+        if (layerIndex === 0) {
+          newLayers[0] = { ...DEFAULT_LAYER_0 };
+        } else {
+          newLayers[layerIndex] = {};
+        }
+
+        return newLayers;
+      });
+      setHasUnsavedChanges(true);
+    }
+  }, []);
+
+  // Reset all layers to factory default
+  const resetAllToDefault = useCallback(() => {
+    setLayers(getDefaultKeymap());
+    setHasUnsavedChanges(true);
   }, []);
 
   return {
     currentLayer,
     layers,
+    hasUnsavedChanges,
     assignKeycode,
     getKeycode,
     clearKeycode,
@@ -117,6 +175,9 @@ export function useKeymap() {
     getLayerKeycodeCount,
     exportKeymap,
     importKeymap,
+    saveKeymap,
+    resetLayerToDefault,
+    resetAllToDefault,
     maxLayers: MAX_LAYERS
   };
 }
