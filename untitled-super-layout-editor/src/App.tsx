@@ -396,7 +396,7 @@ function AppContent() {
                   Untitled Super Keyboard
                 </h1>
                 <p className={cn("text-sm", theme.colors.textSecondary)}>
-                  Professional Layout Configurator
+                  Layout Configurator
                 </p>
               </div>
             </motion.div>

@@ -175,7 +175,7 @@ export const CATEGORY_INFO: Record<Keycode['category'], { name: string; icon: st
   function: { name: 'Function', icon: '🎛️', color: 'text-cyan-400' },
   navigation: { name: 'Navigation', icon: '🧭', color: 'text-green-400' },
   media: { name: 'Media', icon: '🎵', color: 'text-pink-400' },
-  layer: { name: 'Layers', icon: '📚', color: 'text-amber-400' },
+  layer: { name: 'Layers', icon: '📑', color: 'text-amber-400' },
   system: { name: 'System', icon: '⚙️', color: 'text-red-400' },
   numpad: { name: 'Numpad', icon: '🔢', color: 'text-indigo-400' },
 };
