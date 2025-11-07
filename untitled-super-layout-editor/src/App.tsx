@@ -396,7 +396,7 @@ function AppContent() {
                   Untitled Super Keyboard
                 </h1>
                 <p className={cn("text-sm", theme.colors.textSecondary)}>
-                  Layout Configurator
+                  Layout Editor
                 </p>
               </div>
             </motion.div>
@@ -633,7 +633,7 @@ function AppContent() {
             >
               <Keyboard className="w-16 h-16 mx-auto mb-4 text-indigo-400" />
               <h2 className={cn("text-2xl font-bold mb-2", theme.colors.text)}>
-                Welcome to Your Configurator
+                Welcome to the Untitled Super Keyboard Editor
               </h2>
               <p className={cn("mb-6", theme.colors.textSecondary)}>
                 Connect your physical split keyboard or try demo mode to explore the interface with your QMK layout.
