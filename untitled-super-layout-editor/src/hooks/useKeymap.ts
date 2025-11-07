@@ -11,7 +11,7 @@ export interface LayerKeymap {
   [keyId: string]: string; // keyId -> keycode
 }
 
-const MAX_LAYERS = 16;
+const MAX_LAYERS = 5;
 const STORAGE_KEY = 'untitled-super-keyboard-keymap';
 
 export function useKeymap() {
@@ -24,8 +24,16 @@ export function useKeymap() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === MAX_LAYERS) {
-          return parsed;
+        // Accept any array, but ensure it has exactly MAX_LAYERS layers
+        if (Array.isArray(parsed)) {
+          // If saved data has different number of layers, migrate it
+          const newLayers = getDefaultKeymap();
+          for (let i = 0; i < Math.min(parsed.length, MAX_LAYERS); i++) {
+            if (parsed[i] && typeof parsed[i] === 'object') {
+              newLayers[i] = parsed[i];
+            }
+          }
+          return newLayers;
         }
       } catch (e) {
         console.error('Failed to parse saved keymap:', e);
@@ -114,7 +122,7 @@ export function useKeymap() {
   // Import keymap from JSON
   const importKeymap = useCallback((data: any) => {
     if (data?.layers && Array.isArray(data.layers)) {
-      const newLayers = Array(MAX_LAYERS).fill(null).map(() => ({}));
+      const newLayers = getDefaultKeymap();
       data.layers.forEach((layerData: any) => {
         if (layerData?.layer >= 0 && layerData?.layer < MAX_LAYERS && layerData?.keycodes) {
           newLayers[layerData.layer] = layerData.keycodes;
@@ -143,7 +151,7 @@ export function useKeymap() {
       setLayers(prevLayers => {
         const newLayers = [...prevLayers];
 
-        // Layer 0 resets to DEFAULT_LAYER_0, others reset to empty
+        // Layer 0 resets to DEFAULT_LAYER_0, others (1-4) reset to empty
         if (layerIndex === 0) {
           newLayers[0] = { ...DEFAULT_LAYER_0 };
         } else {

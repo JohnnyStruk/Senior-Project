@@ -26,7 +26,7 @@ export function KeyboardView({
   connectedDevices = { left: false, right: false },
   getKeycode,
   currentLayer = 0,
-  maxLayers = 16,
+  maxLayers = 5,
   onLayerSwitch,
   getLayerKeycodeCount
 }: KeyboardViewProps) {

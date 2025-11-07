@@ -121,15 +121,15 @@ export const DEFAULT_LAYER_0: LayerKeymap = {
   ...DEFAULT_RIGHT_KEYMAP,
 };
 
-// Get the complete default keymap with all 16 empty layers except Layer 0
+// Get the complete default keymap with all 5 empty layers except Layer 0
 export function getDefaultKeymap(): LayerKeymap[] {
   const layers: LayerKeymap[] = [];
 
   // Layer 0 is the default QWERTY layout
   layers[0] = { ...DEFAULT_LAYER_0 };
 
-  // Layers 1-15 start empty
-  for (let i = 1; i < 16; i++) {
+  // Layers 1-4 start empty
+  for (let i = 1; i < 5; i++) {
     layers[i] = {};
   }
 

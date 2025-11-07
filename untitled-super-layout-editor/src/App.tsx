@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package, Save, RotateCcw } from "lucide-react";
+import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package, Save, RotateCcw, HelpCircle } from "lucide-react";
 import { useTheme } from "./contexts/ThemeContext";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import { KeyboardView } from "./components/KeyboardView";
@@ -27,6 +27,7 @@ function AppContent() {
   } = useKeymap();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [showKeycodePanel, setShowKeycodePanel] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   const handleConnectHardware = async () => {
@@ -531,12 +532,31 @@ function AppContent() {
                 )}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                title="Toggle theme"
               >
                 {theme.isDark ? (
                   <Sun className="w-5 h-5 text-amber-400" />
                 ) : (
                   <Moon className="w-5 h-5 text-indigo-400" />
                 )}
+              </motion.button>
+
+              {/* Help button */}
+              <motion.button
+                onClick={() => setShowHelpPanel(!showHelpPanel)}
+                className={cn(
+                  "p-2 rounded-lg transition-all duration-200",
+                  theme.colors.surface,
+                  theme.colors.surfaceHover,
+                  theme.colors.border,
+                  "border backdrop-blur-sm hover:shadow-lg",
+                  showHelpPanel && "ring-2 ring-indigo-500"
+                )}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Help & Guide"
+              >
+                <HelpCircle className="w-5 h-5 text-indigo-400" />
               </motion.button>
             </div>
           </div>
@@ -649,6 +669,168 @@ function AppContent() {
             <Save className="w-4 h-4" />
             Changes saved successfully!
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Help Panel */}
+      <AnimatePresence>
+        {showHelpPanel && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHelpPanel(false)}
+            />
+
+            {/* Help Modal */}
+            <motion.div
+              className={cn(
+                "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+                "w-full max-w-2xl max-h-[80vh] overflow-y-auto",
+                "rounded-2xl p-6 shadow-2xl z-50",
+                theme.colors.surface,
+                theme.colors.border,
+                "border backdrop-blur-md"
+              )}
+              initial={{ opacity: 0, scale: 0.9, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "p-2 rounded-xl",
+                    "bg-indigo-500/20 border border-indigo-500/30"
+                  )}>
+                    <HelpCircle className="w-6 h-6 text-indigo-400" />
+                  </div>
+                  <h2 className={cn("text-2xl font-bold", theme.colors.text)}>
+                    How to Use
+                  </h2>
+                </div>
+                <motion.button
+                  onClick={() => setShowHelpPanel(false)}
+                  className={cn(
+                    "p-2 rounded-lg transition-colors",
+                    "hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                  )}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-6">
+                {/* Getting Started */}
+                <section>
+                  <h3 className={cn("text-lg font-semibold mb-3 text-indigo-400")}>
+                    Getting Started
+                  </h3>
+                  <ol className={cn("space-y-2 text-sm", theme.colors.textSecondary)}>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-indigo-400">1.</span>
+                      <span>Click <strong className={theme.colors.text}>Connect Hardware</strong> to connect your physical keyboard, or <strong className={theme.colors.text}>Demo Mode</strong> to try the interface without hardware.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-indigo-400">2.</span>
+                      <span>Once connected, you'll see your split keyboard layout with left and right halves.</span>
+                    </li>
+                  </ol>
+                </section>
+
+                {/* Customizing Keys */}
+                <section>
+                  <h3 className={cn("text-lg font-semibold mb-3 text-cyan-400")}>
+                    Customizing Keys
+                  </h3>
+                  <ol className={cn("space-y-2 text-sm", theme.colors.textSecondary)}>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-cyan-400">1.</span>
+                      <span>Click any key on the keyboard to select it.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-cyan-400">2.</span>
+                      <span>Click the <Package className="w-4 h-4 inline" /> icon to open the keycodes panel.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-cyan-400">3.</span>
+                      <span>Browse categories or search for a keycode, then click to assign it to your selected key.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-cyan-400">4.</span>
+                      <span>Keys with custom assignments show a cyan dot indicator.</span>
+                    </li>
+                  </ol>
+                </section>
+
+                {/* Layers */}
+                <section>
+                  <h3 className={cn("text-lg font-semibold mb-3 text-purple-400")}>
+                    Working with Layers
+                  </h3>
+                  <ul className={cn("space-y-2 text-sm", theme.colors.textSecondary)}>
+                    <li className="flex gap-2">
+                      <span className="text-purple-400">•</span>
+                      <span>Use the <strong className={theme.colors.text}>Layer dropdown</strong> to switch between 5 different keyboard layouts (0-4).</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-purple-400">•</span>
+                      <span>Each layer can have completely different key assignments.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-purple-400">•</span>
+                      <span>The dropdown shows how many keys are assigned in each layer.</span>
+                    </li>
+                  </ul>
+                </section>
+
+                {/* Saving */}
+                <section>
+                  <h3 className={cn("text-lg font-semibold mb-3 text-green-400")}>
+                    Saving Changes
+                  </h3>
+                  <ul className={cn("space-y-2 text-sm", theme.colors.textSecondary)}>
+                    <li className="flex gap-2">
+                      <span className="text-green-400">•</span>
+                      <span>When you make changes, a <strong className={theme.colors.text}>Save Changes</strong> button appears in the header.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-green-400">•</span>
+                      <span>Click it to save your keymap configuration locally in your browser.</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-green-400">•</span>
+                      <span>Use <strong className={theme.colors.text}>Reset Layer</strong> to restore a layer to its default configuration.</span>
+                    </li>
+                  </ul>
+                </section>
+
+                {/* Tips */}
+                <section className={cn(
+                  "p-4 rounded-lg border",
+                  "bg-indigo-500/10 border-indigo-500/30"
+                )}>
+                  <h3 className={cn("text-lg font-semibold mb-2 text-indigo-400")}>
+                    💡 Pro Tips
+                  </h3>
+                  <ul className={cn("space-y-1 text-sm", theme.colors.textSecondary)}>
+                    <li>• Remember to click <strong className={theme.colors.text}>Save Changes</strong> to persist your keymap configuration</li>
+                    <li>• Click the X button to close the keycodes panel</li>
+                    <li>• The connection status indicators above each half show if it's connected</li>
+                    <li>• Toggle between dark and light themes using the <Sun className="w-3 h-3 inline" />/<Moon className="w-3 h-3 inline" /> button</li>
+                    <li>• Your saved configuration is stored locally in your browser</li>
+                  </ul>
+                </section>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
