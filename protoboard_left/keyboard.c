@@ -6,10 +6,6 @@ void keyboard_pre_init_kb(void) {
     i2c_init();
     mcp23017_init();
 
-#ifdef RGBLIGHT_ENABLE
-    rgblight_init();
-#endif
-
     keyboard_pre_init_user();
 }
 
