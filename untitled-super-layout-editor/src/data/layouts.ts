@@ -1,5 +1,10 @@
 import type { KeyboardHalf } from '../types/keyboard';
 
+// Keyboard type identifier
+export type KeyboardType = 'main' | 'protoboard';
+
+// MAIN KEYBOARD LAYOUTS (Final Hardware - 8×8 matrix)
+
 export const leftHalfLayout: KeyboardHalf = {
   name: "Left Half",
   pid: "0x6060", 
@@ -119,3 +124,91 @@ export const rightHalfLayout: KeyboardHalf = {
     { label: "→", matrix: [5, 8], x: 8.5, y: 5 }
   ]
 };
+
+// PROTOBOARD LAYOUTS (Testing Hardware - 4×5 matrix)
+
+export const protoboardLeftLayout: KeyboardHalf = {
+  name: "Protoboard Left",
+  pid: "0x6060",
+  layout: [
+    // Row 0: Q W E R T
+    { label: "Q", matrix: [0, 0], x: 0, y: 0 },
+    { label: "W", matrix: [0, 1], x: 1, y: 0 },
+    { label: "E", matrix: [0, 2], x: 2, y: 0 },
+    { label: "R", matrix: [0, 3], x: 3, y: 0 },
+    { label: "T", matrix: [0, 4], x: 4, y: 0 },
+
+    // Row 1: Tab A S D F
+    { label: "Tab", matrix: [1, 0], x: 0, y: 1 },
+    { label: "A", matrix: [1, 1], x: 1, y: 1 },
+    { label: "S", matrix: [1, 2], x: 2, y: 1 },
+    { label: "D", matrix: [1, 3], x: 3, y: 1 },
+    { label: "F", matrix: [1, 4], x: 4, y: 1 },
+
+    // Row 2: Shift Z X C V
+    { label: "Shift", matrix: [2, 0], x: 0, y: 2 },
+    { label: "Z", matrix: [2, 1], x: 1, y: 2 },
+    { label: "X", matrix: [2, 2], x: 2, y: 2 },
+    { label: "C", matrix: [2, 3], x: 3, y: 2 },
+    { label: "V", matrix: [2, 4], x: 4, y: 2 },
+
+    // Row 3: Ctrl Win Alt Space Esc
+    { label: "Ctrl", matrix: [3, 0], x: 0, y: 3 },
+    { label: "Win", matrix: [3, 1], x: 1, y: 3 },
+    { label: "Alt", matrix: [3, 2], x: 2, y: 3 },
+    { label: "Space", matrix: [3, 3], x: 3, y: 3 },
+    { label: "Esc", matrix: [3, 4], x: 4, y: 3 }
+  ]
+};
+
+export const protoboardRightLayout: KeyboardHalf = {
+  name: "Protoboard Right",
+  pid: "0x6061",
+  layout: [
+    // Row 0: Y U I O P
+    { label: "Y", matrix: [0, 0], x: 0.5, y: 0 },
+    { label: "U", matrix: [0, 1], x: 1.5, y: 0 },
+    { label: "I", matrix: [0, 2], x: 2.5, y: 0 },
+    { label: "O", matrix: [0, 3], x: 3.5, y: 0 },
+    { label: "P", matrix: [0, 4], x: 4.5, y: 0 },
+
+    // Row 1: G H J K L
+    { label: "G", matrix: [1, 0], x: 0.5, y: 1 },
+    { label: "H", matrix: [1, 1], x: 1.5, y: 1 },
+    { label: "J", matrix: [1, 2], x: 2.5, y: 1 },
+    { label: "K", matrix: [1, 3], x: 3.5, y: 1 },
+    { label: "L", matrix: [1, 4], x: 4.5, y: 1 },
+
+    // Row 2: B N M , .
+    { label: "B", matrix: [2, 0], x: 0.5, y: 2 },
+    { label: "N", matrix: [2, 1], x: 1.5, y: 2 },
+    { label: "M", matrix: [2, 2], x: 2.5, y: 2 },
+    { label: "<,", matrix: [2, 3], x: 3.5, y: 2 },
+    { label: ">.", matrix: [2, 4], x: 4.5, y: 2 },
+
+    // Row 3: Enter Bksp Del ; '
+    { label: "Enter", matrix: [3, 0], x: 0.5, y: 3 },
+    { label: "Bksp", matrix: [3, 1], x: 1.5, y: 3 },
+    { label: "Del", matrix: [3, 2], x: 2.5, y: 3 },
+    { label: ":;", matrix: [3, 3], x: 3.5, y: 3 },
+    { label: "\"'", matrix: [3, 4], x: 4.5, y: 3 }
+  ]
+};
+
+// Helper function to get layouts based on keyboard type
+export function getLayoutsForKeyboard(type: KeyboardType): {
+  left: KeyboardHalf;
+  right: KeyboardHalf;
+} {
+  if (type === 'protoboard') {
+    return {
+      left: protoboardLeftLayout,
+      right: protoboardRightLayout
+    };
+  }
+
+  return {
+    left: leftHalfLayout,
+    right: rightHalfLayout
+  };
+}
