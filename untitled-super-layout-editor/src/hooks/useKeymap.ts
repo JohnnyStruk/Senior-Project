@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Keycode } from '../data/keycodes';
-import { getDefaultKeymap, DEFAULT_LAYER_0 } from '../data/defaultKeymap';
+import { getDefaultKeymap } from '../data/defaultKeymap';
+import type { KeyboardType } from '../data/layouts';
 
 export interface KeymapEntry {
   keyId: string; // Format: "left-0-0" or "right-2-3"
@@ -12,22 +13,28 @@ export interface LayerKeymap {
 }
 
 const MAX_LAYERS = 5;
-const STORAGE_KEY = 'untitled-super-keyboard-keymap';
+const STORAGE_KEY_PREFIX = 'untitled-super-keyboard-keymap';
 
-export function useKeymap() {
+// Get storage key for specific keyboard type
+function getStorageKey(keyboardType: KeyboardType): string {
+  return `${STORAGE_KEY_PREFIX}-${keyboardType}`;
+}
+
+export function useKeymap(keyboardType: KeyboardType = 'main') {
   const [currentLayer, setCurrentLayer] = useState(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [layers, setLayers] = useState<LayerKeymap[]>(() => {
-    // Try to load from localStorage first
-    const saved = localStorage.getItem(STORAGE_KEY);
+    // Try to load from localStorage for this specific keyboard type
+    const storageKey = getStorageKey(keyboardType);
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         // Accept any array, but ensure it has exactly MAX_LAYERS layers
         if (Array.isArray(parsed)) {
           // If saved data has different number of layers, migrate it
-          const newLayers = getDefaultKeymap();
+          const newLayers = getDefaultKeymap(keyboardType);
           for (let i = 0; i < Math.min(parsed.length, MAX_LAYERS); i++) {
             if (parsed[i] && typeof parsed[i] === 'object') {
               newLayers[i] = parsed[i];
@@ -40,9 +47,38 @@ export function useKeymap() {
       }
     }
 
-    // If nothing saved or parse failed, use default keymap
-    return getDefaultKeymap();
+    // If nothing saved or parse failed, use default keymap for this keyboard type
+    return getDefaultKeymap(keyboardType);
   });
+
+  // Reload layers when keyboard type changes
+  useEffect(() => {
+    const storageKey = getStorageKey(keyboardType);
+    const saved = localStorage.getItem(storageKey);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const newLayers = getDefaultKeymap(keyboardType);
+          for (let i = 0; i < Math.min(parsed.length, MAX_LAYERS); i++) {
+            if (parsed[i] && typeof parsed[i] === 'object') {
+              newLayers[i] = parsed[i];
+            }
+          }
+          setLayers(newLayers);
+          setHasUnsavedChanges(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to parse saved keymap:', e);
+      }
+    }
+
+    // Load default keymap for this keyboard type if nothing saved
+    setLayers(getDefaultKeymap(keyboardType));
+    setHasUnsavedChanges(false);
+  }, [keyboardType]);
 
   // Assign a keycode to a key in the current layer
   const assignKeycode = useCallback((keyId: string, keycode: Keycode) => {
@@ -133,17 +169,18 @@ export function useKeymap() {
     }
   }, []);
 
-  // Save current keymap to localStorage
+  // Save current keymap to localStorage for this keyboard type
   const saveKeymap = useCallback(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(layers));
+      const storageKey = getStorageKey(keyboardType);
+      localStorage.setItem(storageKey, JSON.stringify(layers));
       setHasUnsavedChanges(false);
       return true;
     } catch (e) {
       console.error('Failed to save keymap:', e);
       return false;
     }
-  }, [layers]);
+  }, [layers, keyboardType]);
 
   // Reset a specific layer to default
   const resetLayerToDefault = useCallback((layerIndex: number) => {
@@ -151,9 +188,10 @@ export function useKeymap() {
       setLayers(prevLayers => {
         const newLayers = [...prevLayers];
 
-        // Layer 0 resets to DEFAULT_LAYER_0, others (1-4) reset to empty
+        // Layer 0 resets to keyboard type's default, others (1-4) reset to empty
         if (layerIndex === 0) {
-          newLayers[0] = { ...DEFAULT_LAYER_0 };
+          const defaults = getDefaultKeymap(keyboardType);
+          newLayers[0] = { ...defaults[0] };
         } else {
           newLayers[layerIndex] = {};
         }
@@ -162,12 +200,24 @@ export function useKeymap() {
       });
       setHasUnsavedChanges(true);
     }
-  }, []);
+  }, [keyboardType]);
 
-  // Reset all layers to factory default
+  // Reset all layers to factory default for current keyboard type
   const resetAllToDefault = useCallback(() => {
-    setLayers(getDefaultKeymap());
+    setLayers(getDefaultKeymap(keyboardType));
     setHasUnsavedChanges(true);
+  }, [keyboardType]);
+
+  // Update an entire layer with new keymap (useful for syncing from hardware)
+  const updateLayer = useCallback((layerIndex: number, keymap: LayerKeymap) => {
+    if (layerIndex >= 0 && layerIndex < MAX_LAYERS) {
+      setLayers(prevLayers => {
+        const newLayers = [...prevLayers];
+        newLayers[layerIndex] = keymap;
+        return newLayers;
+      });
+      setHasUnsavedChanges(true);
+    }
   }, []);
 
   return {
@@ -186,6 +236,7 @@ export function useKeymap() {
     saveKeymap,
     resetLayerToDefault,
     resetAllToDefault,
+    updateLayer,
     maxLayers: MAX_LAYERS
   };
 }

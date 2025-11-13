@@ -1,4 +1,7 @@
 import type { LayerKeymap } from '../hooks/useKeymap';
+import type { KeyboardType } from './layouts';
+
+// ===== MAIN KEYBOARD DEFAULTS (8x8 matrix) =====
 
 // Default keymap parsed from QMK firmware (untitled_super_keyboard/keymaps/default/keymap.c)
 // This represents the factory default Layer 0 for the left half
@@ -115,18 +118,92 @@ export const DEFAULT_RIGHT_KEYMAP: LayerKeymap = {
   'right-5-8': 'KC_RGHT',
 };
 
-// Combine into default Layer 0
+// Combine into default Layer 0 for main keyboard
 export const DEFAULT_LAYER_0: LayerKeymap = {
   ...DEFAULT_LEFT_KEYMAP,
   ...DEFAULT_RIGHT_KEYMAP,
 };
 
-// Get the complete default keymap with all 5 empty layers except Layer 0
-export function getDefaultKeymap(): LayerKeymap[] {
+// ===== PROTOBOARD DEFAULTS (4x5 matrix) =====
+
+// Protoboard left half default (simple QWERTY subset)
+export const PROTOBOARD_LEFT_DEFAULT: LayerKeymap = {
+  // Row 0: Q W E R T
+  'left-0-0': 'KC_Q',
+  'left-0-1': 'KC_W',
+  'left-0-2': 'KC_E',
+  'left-0-3': 'KC_R',
+  'left-0-4': 'KC_T',
+
+  // Row 1: Tab A S D F
+  'left-1-0': 'KC_TAB',
+  'left-1-1': 'KC_A',
+  'left-1-2': 'KC_S',
+  'left-1-3': 'KC_D',
+  'left-1-4': 'KC_F',
+
+  // Row 2: Shift Z X C V
+  'left-2-0': 'KC_LSFT',
+  'left-2-1': 'KC_Z',
+  'left-2-2': 'KC_X',
+  'left-2-3': 'KC_C',
+  'left-2-4': 'KC_V',
+
+  // Row 3: Ctrl Win Alt Space Esc
+  'left-3-0': 'KC_LCTL',
+  'left-3-1': 'KC_LGUI',
+  'left-3-2': 'KC_LALT',
+  'left-3-3': 'KC_SPC',
+  'left-3-4': 'KC_ESC',
+};
+
+// Protoboard right half default
+export const PROTOBOARD_RIGHT_DEFAULT: LayerKeymap = {
+  // Row 0: Y U I O P
+  'right-0-0': 'KC_Y',
+  'right-0-1': 'KC_U',
+  'right-0-2': 'KC_I',
+  'right-0-3': 'KC_O',
+  'right-0-4': 'KC_P',
+
+  // Row 1: G H J K L
+  'right-1-0': 'KC_G',
+  'right-1-1': 'KC_H',
+  'right-1-2': 'KC_J',
+  'right-1-3': 'KC_K',
+  'right-1-4': 'KC_L',
+
+  // Row 2: B N M , .
+  'right-2-0': 'KC_B',
+  'right-2-1': 'KC_N',
+  'right-2-2': 'KC_M',
+  'right-2-3': 'KC_COMM',
+  'right-2-4': 'KC_DOT',
+
+  // Row 3: Esc Space Alt Ctrl Backspace
+  'right-3-0': 'KC_ESC',
+  'right-3-1': 'KC_SPC',
+  'right-3-2': 'KC_RALT',
+  'right-3-3': 'KC_RCTL',
+  'right-3-4': 'KC_BSPC',
+};
+
+// Combine protoboard defaults
+export const PROTOBOARD_LAYER_0: LayerKeymap = {
+  ...PROTOBOARD_LEFT_DEFAULT,
+  ...PROTOBOARD_RIGHT_DEFAULT,
+};
+
+// Get the complete default keymap with all 5 layers
+export function getDefaultKeymap(keyboardType: KeyboardType = 'main'): LayerKeymap[] {
   const layers: LayerKeymap[] = [];
 
-  // Layer 0 is the default QWERTY layout
-  layers[0] = { ...DEFAULT_LAYER_0 };
+  // Layer 0 depends on keyboard type
+  if (keyboardType === 'protoboard') {
+    layers[0] = { ...PROTOBOARD_LAYER_0 };
+  } else {
+    layers[0] = { ...DEFAULT_LAYER_0 };
+  }
 
   // Layers 1-4 start empty
   for (let i = 1; i < 5; i++) {

@@ -99,21 +99,22 @@ export function Key({
       
       {/* Key content */}
       <div className="relative z-10 flex flex-col items-center justify-center px-2 py-1">
-        {/* Main key label */}
+        {/* Main key label - show assigned keycode if exists, otherwise show default label */}
         <span className="text-xs font-semibold leading-none">
           {keycodeInfo ? keycodeInfo.label : keyData.label}
         </span>
 
-        {/* Show keycode if assigned and different from label */}
-        {keycodeInfo && keycodeInfo.label !== keyData.label && (
-          <span className="text-[9px] opacity-50 leading-none mt-0.5 font-mono">
-            {keyData.label}
+        {/* Show keycode name for reference when assigned */}
+        {keycodeInfo && (
+          <span className="text-[8px] opacity-40 leading-none mt-0.5 font-mono">
+            {assignedKeycode}
           </span>
         )}
 
-        {/* Assignment indicator */}
+        {/* Assignment indicator - cyan dot when key has custom assignment */}
         {keycodeInfo && (
-          <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full shadow-sm" />
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full shadow-sm"
+               title="Custom key assignment" />
         )}
       </div>
       
@@ -127,14 +128,22 @@ export function Key({
         />
       )}
       
-      {/* Subtle category indicator */}
-      <div className={cn(
-        "absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full opacity-40",
-        actualCategory === 'modifier' && "bg-indigo-400",
-        actualCategory === 'function' && "bg-emerald-400", 
-        actualCategory === 'navigation' && "bg-amber-400",
-        actualCategory === 'basic' && "bg-gray-400"
-      )} />
+      {/* Category indicator dot */}
+      <div
+        className={cn(
+          "absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full opacity-50",
+          actualCategory === 'modifier' && "bg-indigo-400",
+          actualCategory === 'function' && "bg-emerald-400",
+          actualCategory === 'navigation' && "bg-amber-400",
+          actualCategory === 'basic' && "bg-gray-400"
+        )}
+        title={
+          actualCategory === 'modifier' ? "Modifier key" :
+          actualCategory === 'function' ? "Function key" :
+          actualCategory === 'navigation' ? "Navigation key" :
+          "Basic key"
+        }
+      />
     </motion.button>
   );
 }

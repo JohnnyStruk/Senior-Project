@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package, Save, RotateCcw, HelpCircle } from "lucide-react";
+import { Moon, Sun, Keyboard, Wifi, WifiOff, Play, X, Package, Save, RotateCcw, HelpCircle, Cpu, Download, Upload } from "lucide-react";
 import { useTheme } from "./contexts/ThemeContext";
 import { ThemeProvider } from "./contexts/ThemeProvider";
 import { KeyboardView } from "./components/KeyboardView";
@@ -9,13 +9,37 @@ import { useKeyboard } from "./hooks/useKeyboard";
 import { useKeymap } from "./hooks/useKeymap";
 import type { KeyPosition } from "./types/keyboard";
 import type { Keycode } from "./data/keycodes";
+import type { KeyboardType } from "./data/layouts";
 import { cn } from "./utils/cn";
+import { convertLayerToString, convertLayerToNumeric } from "./utils/keycodeMapping";
 
 function AppContent() {
   const { theme, toggleTheme } = useTheme();
-  const { connectionState, connectHardware, connectDemo, disconnect } = useKeyboard();
+
+  // State declarations
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [showKeycodePanel, setShowKeycodePanel] = useState(false);
+  const [showHelpPanel, setShowHelpPanel] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [keyboardType, setKeyboardType] = useState<KeyboardType>(() => {
+    // Load from localStorage or default to 'protoboard' for testing
+    const saved = localStorage.getItem('keyboardType');
+    return (saved as KeyboardType) || 'protoboard';
+  });
+
+  // Hooks that depend on state
+  const {
+    connectionState,
+    connectHardware,
+    connectDemo,
+    disconnect,
+    readLayerKeymap,
+    writeLayerKeymap
+  } = useKeyboard();
+
   const {
     currentLayer,
+    layers,
     assignKeycode,
     getKeycode,
     hasUnsavedChanges,
@@ -23,12 +47,17 @@ function AppContent() {
     resetLayerToDefault,
     switchLayer,
     getLayerKeycodeCount,
+    updateLayer,
     maxLayers
-  } = useKeymap();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [showKeycodePanel, setShowKeycodePanel] = useState(false);
-  const [showHelpPanel, setShowHelpPanel] = useState(false);
-  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  } = useKeymap(keyboardType);
+
+  // Save keyboard type preference
+  const handleKeyboardTypeChange = (type: KeyboardType) => {
+    setKeyboardType(type);
+    localStorage.setItem('keyboardType', type);
+    // Clear selected key when switching keyboard types
+    setSelectedKey(null);
+  };
 
   const handleConnectHardware = async () => {
     const success = await connectHardware();
@@ -73,6 +102,136 @@ function AppContent() {
   const handleResetLayer = () => {
     if (confirm(`Reset Layer ${currentLayer} to default? This cannot be undone.`)) {
       resetLayerToDefault(currentLayer);
+    }
+  };
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncFromHardware = async () => {
+    if (!connectionState.connected || connectionState.demoMode) {
+      alert('Please connect to hardware first (not demo mode)');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      // Read from both halves for current layer
+      const leftKeymap = await readLayerKeymap(currentLayer, 'left');
+      const rightKeymap = await readLayerKeymap(currentLayer, 'right');
+
+      if (leftKeymap || rightKeymap) {
+        // Convert numeric keycodes to strings and merge
+        const mergedKeymap: Record<string, string> = {};
+
+        if (leftKeymap) {
+          const leftStr = convertLayerToString(leftKeymap);
+          for (const [keyId, keycode] of Object.entries(leftStr)) {
+            // Hardware format is "L0R1", convert to UI format "left-0-1"
+            const match = keyId.match(/L(\d+)R(\d+)/);
+            if (match) {
+              const row = match[1];
+              const col = match[2];
+              mergedKeymap[`left-${row}-${col}`] = keycode;
+            }
+          }
+        }
+
+        if (rightKeymap) {
+          const rightStr = convertLayerToString(rightKeymap);
+          for (const [keyId, keycode] of Object.entries(rightStr)) {
+            // Hardware format is "L0R1", convert to UI format "right-0-1"
+            const match = keyId.match(/L(\d+)R(\d+)/);
+            if (match) {
+              const row = match[1];
+              const col = match[2];
+              mergedKeymap[`right-${row}-${col}`] = keycode;
+            }
+          }
+        }
+
+        // Update the current layer with the synced keymap
+        updateLayer(currentLayer, mergedKeymap);
+
+        console.log('Synced from hardware:', {
+          leftKeys: leftKeymap ? Object.keys(leftKeymap).length : 0,
+          rightKeys: rightKeymap ? Object.keys(rightKeymap).length : 0
+        });
+        alert(`Successfully synced Layer ${currentLayer} from hardware!`);
+      } else {
+        alert('Failed to read keymap from hardware');
+      }
+    } catch (error) {
+      console.error('Sync from hardware error:', error);
+      alert('Error syncing from hardware. Check console for details.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncToHardware = async () => {
+    if (!connectionState.connected || connectionState.demoMode) {
+      alert('Please connect to hardware first (not demo mode)');
+      return;
+    }
+
+    if (!confirm(`Write Layer ${currentLayer} to hardware? This will overwrite the current keymap in EEPROM.`)) {
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      // Get all keys for current layer
+      const currentLayerKeys = layers[currentLayer];
+
+      // Separate into left and right halves, converting to hardware format
+      const leftKeys: Record<string, string> = {};
+      const rightKeys: Record<string, string> = {};
+
+      for (const [keyId, keycode] of Object.entries(currentLayerKeys)) {
+        if (keyId.startsWith('left-')) {
+          // Convert UI format "left-0-1" to hardware format "L0R1"
+          const parts = keyId.split('-');
+          if (parts.length === 3) {
+            const row = parts[1];
+            const col = parts[2];
+            leftKeys[`L${row}R${col}`] = keycode;
+          }
+        } else if (keyId.startsWith('right-')) {
+          // Convert UI format "right-0-1" to hardware format "L0R1"
+          const parts = keyId.split('-');
+          if (parts.length === 3) {
+            const row = parts[1];
+            const col = parts[2];
+            rightKeys[`L${row}R${col}`] = keycode;
+          }
+        }
+      }
+
+      // Convert to numeric keycodes
+      const leftKeymapNumeric = convertLayerToNumeric(leftKeys);
+      const rightKeymapNumeric = convertLayerToNumeric(rightKeys);
+
+      console.log('Writing to hardware:', {
+        leftKeys: Object.keys(leftKeys).length,
+        rightKeys: Object.keys(rightKeys).length
+      });
+
+      // Write to both halves
+      const leftSuccess = await writeLayerKeymap(currentLayer, leftKeymapNumeric, 'left');
+      const rightSuccess = await writeLayerKeymap(currentLayer, rightKeymapNumeric, 'right');
+
+      if (leftSuccess && rightSuccess) {
+        alert(`Successfully wrote Layer ${currentLayer} to hardware!`);
+      } else if (leftSuccess || rightSuccess) {
+        alert(`Partially synced: ${leftSuccess ? 'left' : 'right'} half succeeded`);
+      } else {
+        alert('Failed to write to hardware. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Sync to hardware error:', error);
+      alert('Error syncing to hardware. Check console for details.');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -401,6 +560,40 @@ function AppContent() {
               </div>
             </motion.div>
 
+            {/* Keyboard Type Selector */}
+            <div className="flex items-center gap-2">
+              <Cpu className={cn("w-4 h-4", theme.colors.textSecondary)} />
+              <div className={cn(
+                "flex rounded-lg p-1",
+                theme.colors.surface,
+                theme.colors.border,
+                "border backdrop-blur-sm"
+              )}>
+                <button
+                  onClick={() => handleKeyboardTypeChange('protoboard')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                    keyboardType === 'protoboard'
+                      ? "bg-indigo-600 text-white shadow-lg"
+                      : cn(theme.colors.text, "hover:bg-white/5")
+                  )}
+                >
+                  Protoboard
+                </button>
+                <button
+                  onClick={() => handleKeyboardTypeChange('main')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200",
+                    keyboardType === 'main'
+                      ? "bg-indigo-600 text-white shadow-lg"
+                      : cn(theme.colors.text, "hover:bg-white/5")
+                  )}
+                >
+                  Main Keyboard
+                </button>
+              </div>
+            </div>
+
             {/* Controls */}
             <div className="flex items-center gap-3">
               {/* Save button - only show when connected and has changes */}
@@ -443,6 +636,56 @@ function AppContent() {
                   <span className={theme.colors.text}>Reset Layer</span>
                 </motion.button>
               )}
+
+              {/* Hardware sync buttons - only show when connected */}
+              {connectionState.connected && !connectionState.demoMode && (
+                <>
+                  <motion.button
+                    onClick={handleSyncFromHardware}
+                    disabled={isSyncing}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm",
+                      "transition-all duration-200",
+                      theme.colors.surface,
+                      theme.colors.surfaceHover,
+                      theme.colors.border,
+                      "border backdrop-blur-sm hover:shadow-lg",
+                      isSyncing && "opacity-50 cursor-not-allowed"
+                    )}
+                    whileHover={!isSyncing ? { scale: 1.02 } : {}}
+                    whileTap={!isSyncing ? { scale: 0.98 } : {}}
+                    title="Read keymap from hardware"
+                  >
+                    <Download className={cn("w-4 h-4", "text-cyan-500")} />
+                    <span className={theme.colors.text}>
+                      {isSyncing ? 'Syncing...' : 'Sync from HW'}
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    onClick={handleSyncToHardware}
+                    disabled={isSyncing}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm",
+                      "transition-all duration-200",
+                      theme.colors.surface,
+                      theme.colors.surfaceHover,
+                      theme.colors.border,
+                      "border backdrop-blur-sm hover:shadow-lg",
+                      isSyncing && "opacity-50 cursor-not-allowed"
+                    )}
+                    whileHover={!isSyncing ? { scale: 1.02 } : {}}
+                    whileTap={!isSyncing ? { scale: 0.98 } : {}}
+                    title="Write keymap to hardware"
+                  >
+                    <Upload className={cn("w-4 h-4", "text-purple-500")} />
+                    <span className={theme.colors.text}>
+                      {isSyncing ? 'Syncing...' : 'Sync to HW'}
+                    </span>
+                  </motion.button>
+                </>
+              )}
+
               {/* Connection button */}
               {!connectionState.connected ? (
                 <div className="flex items-center gap-2">
@@ -600,6 +843,7 @@ function AppContent() {
               )}
 
               <KeyboardView
+                keyboardType={keyboardType}
                 selectedKey={selectedKey}
                 onKeySelect={handleKeySelect}
                 connectedDevices={{

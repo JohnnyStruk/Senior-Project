@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { Key } from './Key';
-import { leftHalfLayout, rightHalfLayout } from '../data/layouts';
+import { getLayoutsForKeyboard, type KeyboardType } from '../data/layouts';
 import type { KeyPosition } from '../types/keyboard';
 import { cn } from '../utils/cn';
 
 interface KeyboardViewProps {
+  keyboardType?: KeyboardType;
   selectedKey?: string | null;
   onKeySelect?: (keyData: KeyPosition, half: 'left' | 'right') => void;
   connectedDevices?: {
@@ -21,6 +22,7 @@ interface KeyboardViewProps {
 }
 
 export function KeyboardView({
+  keyboardType = 'main',
   selectedKey,
   onKeySelect,
   connectedDevices = { left: false, right: false },
@@ -30,6 +32,10 @@ export function KeyboardView({
   onLayerSwitch,
   getLayerKeycodeCount
 }: KeyboardViewProps) {
+  // Get layouts based on keyboard type
+  const layouts = getLayoutsForKeyboard(keyboardType);
+  const leftHalfLayout = layouts.left;
+  const rightHalfLayout = layouts.right;
   const { theme } = useTheme();
   const [hoveredHalf, setHoveredHalf] = useState<'left' | 'right' | null>(null);
 
