@@ -17,6 +17,11 @@
         "pid": "0x6061",
         "vid": "0xFEED"
     },
+    "matrix_pins": {
+        "cols": [ "GP6", "GP7", "GP8", "GP9", "GP10" ],
+        "rows": [ "GP2", "GP3", "GP4", "GP5" ]
+    },
+    "debounce": 5,
     "layouts": {
         "LAYOUT": {
             "layout": [
