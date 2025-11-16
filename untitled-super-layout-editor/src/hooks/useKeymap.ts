@@ -210,13 +210,25 @@ export function useKeymap(keyboardType: KeyboardType = 'main') {
 
   // Update an entire layer with new keymap (useful for syncing from hardware)
   const updateLayer = useCallback((layerIndex: number, keymap: LayerKeymap) => {
+    console.log('>>> updateLayer called <<<');
+    console.log('Layer index:', layerIndex);
+    console.log('New keymap:', keymap);
+    console.log('Keymap has', Object.keys(keymap).length, 'keys');
+
     if (layerIndex >= 0 && layerIndex < MAX_LAYERS) {
       setLayers(prevLayers => {
+        console.log('Previous layers state:', prevLayers);
+        console.log('Previous layer', layerIndex, ':', prevLayers[layerIndex]);
         const newLayers = [...prevLayers];
         newLayers[layerIndex] = keymap;
+        console.log('New layers state:', newLayers);
+        console.log('New layer', layerIndex, ':', newLayers[layerIndex]);
         return newLayers;
       });
       setHasUnsavedChanges(true);
+      console.log('>>> updateLayer completed, hasUnsavedChanges set to true <<<');
+    } else {
+      console.error('Invalid layer index:', layerIndex);
     }
   }, []);
 

@@ -149,24 +149,58 @@ export class VIAManager {
     expectedCommand: VIACommand,
     timeout: number = 1000
   ): Promise<DataView> {
+    console.log(`[VIA] Sending command 0x${expectedCommand.toString(16)}, timeout: ${timeout}ms`);
+    console.log(`[VIA] Packet:`, Array.from(packet).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+    console.log(`[VIA] Pending requests before send:`, this.pendingRequests.size);
+
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
+        console.error(`[VIA] TIMEOUT for command 0x${expectedCommand.toString(16)} after ${timeout}ms`);
+        console.error(`[VIA] Pending requests at timeout:`, this.pendingRequests.size);
         this.pendingRequests.delete(expectedCommand);
-        reject(new Error('VIA command timeout'));
+        reject(new Error(`VIA command timeout (0x${expectedCommand.toString(16)})`));
       }, timeout);
 
       this.pendingRequests.set(expectedCommand, {
         resolve: (data) => {
+          console.log(`[VIA] Received response for command 0x${expectedCommand.toString(16)}`);
+          console.log(`[VIA] Response data:`, Array.from(new Uint8Array(data.buffer)).slice(0, 8).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
           clearTimeout(timeoutId);
           resolve(data);
         },
         reject: (err) => {
+          console.error(`[VIA] Command 0x${expectedCommand.toString(16)} rejected:`, err);
           clearTimeout(timeoutId);
           reject(err);
         }
       });
 
+      console.log(`[VIA] Calling device.sendReport...`);
       device.sendReport(0, packet).catch((error) => {
+        console.error(`[VIA] sendReport failed for command 0x${expectedCommand.toString(16)}:`, error);
+
+        // Provide helpful error messages for common issues
+        if (error.name === 'NotAllowedError') {
+          console.error(`
+╔═══════════════════════════════════════════════════════════╗
+║ ⚠️  HID DEVICE WRITE PERMISSION DENIED                    ║
+╠═══════════════════════════════════════════════════════════╣
+║ The keyboard is connected but cannot be written to.      ║
+║                                                           ║
+║ Common causes:                                            ║
+║ 1. Another app (like VIA) has exclusive access           ║
+║ 2. Device needs to be reconnected                        ║
+║ 3. Browser lost write permissions                        ║
+║                                                           ║
+║ Try this:                                              ║
+║ 1. Close VIA or other keyboard configurators             ║
+║ 2. Disconnect and click "Disconnect" button              ║
+║ 3. Unplug and replug the keyboard                        ║
+║ 4. Click "Connect Hardware" again                        ║
+╚═══════════════════════════════════════════════════════════╝
+          `);
+        }
+
         clearTimeout(timeoutId);
         this.pendingRequests.delete(expectedCommand);
         reject(error);
@@ -180,11 +214,19 @@ export class VIAManager {
    */
   handleResponse(data: DataView) {
     const command = data.getUint8(0) as VIACommand;
+    console.log(`[VIA] handleResponse: Received command 0x${command.toString(16)}`);
+    console.log(`[VIA] Response bytes:`, Array.from(new Uint8Array(data.buffer)).slice(0, 8).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
     const pending = this.pendingRequests.get(command);
 
     if (pending) {
+      console.log(`[VIA] Found pending request for command 0x${command.toString(16)}, resolving...`);
       pending.resolve(data);
       this.pendingRequests.delete(command);
+      console.log(`[VIA] Pending requests after resolve:`, this.pendingRequests.size);
+    } else {
+      console.warn(`[VIA] No pending request for command 0x${command.toString(16)}`);
+      console.warn(`[VIA] Current pending requests:`, Array.from(this.pendingRequests.keys()).map(k => '0x' + k.toString(16)));
     }
   }
 

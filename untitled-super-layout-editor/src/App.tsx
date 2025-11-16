@@ -60,6 +60,13 @@ function AppContent() {
   };
 
   const handleConnectHardware = async () => {
+    // CRITICAL FIX: Always disconnect first to avoid stale device objects
+    console.log('Disconnecting any existing devices before connecting...');
+    disconnect();
+
+    // Small delay to ensure cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const success = await connectHardware();
     if (!success) {
       console.error("Failed to connect to hardware");
@@ -113,11 +120,20 @@ function AppContent() {
       return;
     }
 
+    console.log('=== SYNC FROM HARDWARE START ===');
+    console.log('Current layer:', currentLayer);
+    console.log('Current layer state BEFORE sync:', layers[currentLayer]);
+
     setIsSyncing(true);
     try {
       // Read from both halves for current layer
+      console.log('Reading left half keymap...');
       const leftKeymap = await readLayerKeymap(currentLayer, 'left');
+      console.log('Left keymap received:', leftKeymap);
+
+      console.log('Reading right half keymap...');
       const rightKeymap = await readLayerKeymap(currentLayer, 'right');
+      console.log('Right keymap received:', rightKeymap);
 
       if (leftKeymap || rightKeymap) {
         // Convert numeric keycodes to strings and merge
@@ -125,6 +141,7 @@ function AppContent() {
 
         if (leftKeymap) {
           const leftStr = convertLayerToString(leftKeymap);
+          console.log('Left keymap converted to strings:', leftStr);
           for (const [keyId, keycode] of Object.entries(leftStr)) {
             // Hardware format is "L0R1", convert to UI format "left-0-1"
             const match = keyId.match(/L(\d+)R(\d+)/);
@@ -138,6 +155,7 @@ function AppContent() {
 
         if (rightKeymap) {
           const rightStr = convertLayerToString(rightKeymap);
+          console.log('Right keymap converted to strings:', rightStr);
           for (const [keyId, keycode] of Object.entries(rightStr)) {
             // Hardware format is "L0R1", convert to UI format "right-0-1"
             const match = keyId.match(/L(\d+)R(\d+)/);
@@ -149,22 +167,33 @@ function AppContent() {
           }
         }
 
+        console.log('Merged keymap to update:', mergedKeymap);
+        console.log('Total keys to update:', Object.keys(mergedKeymap).length);
+
         // Update the current layer with the synced keymap
+        console.log('Calling updateLayer...');
         updateLayer(currentLayer, mergedKeymap);
+        console.log('updateLayer called successfully');
 
         console.log('Synced from hardware:', {
           leftKeys: leftKeymap ? Object.keys(leftKeymap).length : 0,
-          rightKeys: rightKeymap ? Object.keys(rightKeymap).length : 0
+          rightKeys: rightKeymap ? Object.keys(rightKeymap).length : 0,
+          mergedKeys: Object.keys(mergedKeymap).length
         });
+        console.log('=== SYNC FROM HARDWARE SUCCESS ===');
         alert(`Successfully synced Layer ${currentLayer} from hardware!`);
       } else {
+        console.error('Both left and right keymaps are null');
+        console.log('=== SYNC FROM HARDWARE FAILED ===');
         alert('Failed to read keymap from hardware');
       }
     } catch (error) {
       console.error('Sync from hardware error:', error);
+      console.log('=== SYNC FROM HARDWARE ERROR ===');
       alert('Error syncing from hardware. Check console for details.');
     } finally {
       setIsSyncing(false);
+      console.log('isSyncing set to false');
     }
   };
 
@@ -178,10 +207,16 @@ function AppContent() {
       return;
     }
 
+    console.log('=== SYNC TO HARDWARE START ===');
+    console.log('Current layer:', currentLayer);
+    console.log('Current layer state:', layers[currentLayer]);
+    console.log('Total keys in current layer:', Object.keys(layers[currentLayer] || {}).length);
+
     setIsSyncing(true);
     try {
       // Get all keys for current layer
       const currentLayerKeys = layers[currentLayer];
+      console.log('Current layer keys to write:', currentLayerKeys);
 
       // Separate into left and right halves, converting to hardware format
       const leftKeys: Record<string, string> = {};
@@ -207,31 +242,52 @@ function AppContent() {
         }
       }
 
+      console.log('Left keys (hardware format):', leftKeys);
+      console.log('Right keys (hardware format):', rightKeys);
+
       // Convert to numeric keycodes
       const leftKeymapNumeric = convertLayerToNumeric(leftKeys);
       const rightKeymapNumeric = convertLayerToNumeric(rightKeys);
 
+      console.log('Left keymap numeric:', leftKeymapNumeric);
+      console.log('Right keymap numeric:', rightKeymapNumeric);
       console.log('Writing to hardware:', {
         leftKeys: Object.keys(leftKeys).length,
         rightKeys: Object.keys(rightKeys).length
       });
 
       // Write to both halves
+      console.log('Writing to left half...');
       const leftSuccess = await writeLayerKeymap(currentLayer, leftKeymapNumeric, 'left');
+      console.log('Left half write result:', leftSuccess);
+
+      console.log('Writing to right half...');
       const rightSuccess = await writeLayerKeymap(currentLayer, rightKeymapNumeric, 'right');
+      console.log('Right half write result:', rightSuccess);
 
       if (leftSuccess && rightSuccess) {
+        console.log('=== SYNC TO HARDWARE SUCCESS ===');
         alert(`Successfully wrote Layer ${currentLayer} to hardware!`);
       } else if (leftSuccess || rightSuccess) {
+        console.log('=== SYNC TO HARDWARE PARTIAL SUCCESS ===');
         alert(`Partially synced: ${leftSuccess ? 'left' : 'right'} half succeeded`);
       } else {
+        console.log('=== SYNC TO HARDWARE FAILED ===');
         alert('Failed to write to hardware. Check console for details.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sync to hardware error:', error);
-      alert('Error syncing to hardware. Check console for details.');
+      console.log('=== SYNC TO HARDWARE ERROR ===');
+
+      // Provide specific error messages for common issues
+      if (error?.name === 'NotAllowedError' || error?.message?.includes('NotAllowedError')) {
+        alert(`⚠️ Cannot write to keyboard!\n\nThe device is connected but write permission was denied.\n\nThis usually means:\n• Another app (like VIA) has exclusive access\n• Device needs to be reconnected\n\nFix:\n1. Close any other keyboard configurators\n2. Click "Disconnect" below\n3. Unplug and replug keyboard\n4. Click "Connect Hardware" again`);
+      } else {
+        alert('Error syncing to hardware. Check console for details.');
+      }
     } finally {
       setIsSyncing(false);
+      console.log('isSyncing set to false');
     }
   };
 
