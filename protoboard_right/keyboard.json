@@ -17,6 +17,11 @@
         "pid": "0x6061",
         "vid": "0xFEED"
     },
+    "matrix_pins": {
+        "cols": [ "GP6", "GP7", "GP8", "GP9", "GP10" ],
+        "rows": [ "GP2", "GP3", "GP4", "GP5" ]
+    },
+    "debounce": 5,
     "layouts": {
         "LAYOUT": {
             "layout": [
@@ -35,11 +40,11 @@
                 { "label": "M", "matrix": [2, 2], "x": 2, "y": 2 },
                 { "label": ",", "matrix": [2, 3], "x": 3, "y": 2 },
                 { "label": ".", "matrix": [2, 4], "x": 4, "y": 2 },
-                { "label": "Escape", "matrix": [3, 0], "x": 0, "y": 3 },
-                { "label": "Space", "matrix": [3, 1], "x": 1, "y": 3 },
-                { "label": "Alt", "matrix": [3, 2], "x": 2, "y": 3 },
-                { "label": "Ctl", "matrix": [3, 3], "x": 3, "y": 3 },
-                { "label": "Backspace", "matrix": [3, 4], "x": 4, "y": 3 }
+                { "label": "Enter", "matrix": [3, 0], "x": 0, "y": 3 },
+                { "label": "Backspace", "matrix": [3, 1], "x": 1, "y": 3 },
+                { "label": "Delete", "matrix": [3, 2], "x": 2, "y": 3 },
+                { "label": "Semicolon", "matrix": [3, 3], "x": 3, "y": 3 },
+                { "label": "Apostrophe", "matrix": [3, 4], "x": 4, "y": 3 }
             ]
         }
     }
