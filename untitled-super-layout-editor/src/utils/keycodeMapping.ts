@@ -148,12 +148,12 @@ export const BASIC_KEYCODES: Record<string, number> = {
  */
 export function getLayerKeycode(type: 'MO' | 'TG' | 'TO' | 'TT' | 'DF' | 'OSL', layer: number): number {
   const baseOffsets = {
-    MO: 0x5C00,   // Momentary layer
-    TG: 0x5C10,   // Toggle layer
-    TO: 0x5C20,   // Switch to layer
-    TT: 0x5C30,   // Tap toggle layer
-    DF: 0x5C40,   // Set default layer
-    OSL: 0x5C50,  // One-shot layer
+    TO: 0x5200,   // Switch to layer (QK_TO)
+    MO: 0x5220,   // Momentary layer (QK_MOMENTARY)
+    TG: 0x5260,   // Toggle layer (QK_TOGGLE_LAYER)
+    OSL: 0x5280,  // One-shot layer (QK_ONE_SHOT_LAYER)
+    TT: 0x52C0,   // Tap toggle layer (QK_LAYER_TAP_TOGGLE)
+    DF: 0x5200,   // Set default layer (same as TO in QMK)
   };
 
   return baseOffsets[type] + layer;
@@ -203,13 +203,12 @@ export function keycodeToString(keycode: number): string {
   if (keycode === 0x01) return 'KC_TRNS';
 
   // Handle layer switching keycodes
-  if (keycode >= 0x5C00 && keycode <= 0x5C5F) {
-    if (keycode >= 0x5C00 && keycode <= 0x5C0F) return `MO(${keycode - 0x5C00})`;
-    if (keycode >= 0x5C10 && keycode <= 0x5C1F) return `TG(${keycode - 0x5C10})`;
-    if (keycode >= 0x5C20 && keycode <= 0x5C2F) return `TO(${keycode - 0x5C20})`;
-    if (keycode >= 0x5C30 && keycode <= 0x5C3F) return `TT(${keycode - 0x5C30})`;
-    if (keycode >= 0x5C40 && keycode <= 0x5C4F) return `DF(${keycode - 0x5C40})`;
-    if (keycode >= 0x5C50 && keycode <= 0x5C5F) return `OSL(${keycode - 0x5C50})`;
+  if (keycode >= 0x5200 && keycode <= 0x52FF) {
+    if (keycode >= 0x5200 && keycode <= 0x521F) return `TO(${keycode - 0x5200})`;
+    if (keycode >= 0x5220 && keycode <= 0x523F) return `MO(${keycode - 0x5220})`;
+    if (keycode >= 0x5260 && keycode <= 0x527F) return `TG(${keycode - 0x5260})`;
+    if (keycode >= 0x5280 && keycode <= 0x529F) return `OSL(${keycode - 0x5280})`;
+    if (keycode >= 0x52C0 && keycode <= 0x52DF) return `TT(${keycode - 0x52C0})`;
   }
 
   // Reverse lookup in basic keycodes
