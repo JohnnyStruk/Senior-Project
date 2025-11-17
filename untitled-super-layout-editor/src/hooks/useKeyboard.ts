@@ -227,14 +227,36 @@ export function useKeyboard() {
     console.log("Demo mode activated - simulating connected keyboard");
   }
 
-  function disconnect() {
-    // Close both devices if they exist
+  async function disconnect() {
+    console.log('Disconnecting devices...');
+
+    // Close both devices if they exist - MUST await to prevent USB stack issues
+    const closePromises: Promise<void>[] = [];
+
     if (devices.left) {
-      devices.left.close();
+      console.log('Closing left device...');
+      closePromises.push(
+        devices.left.close()
+          .then(() => console.log('Left device closed successfully'))
+          .catch(err => console.error('Failed to close left device:', err))
+      );
     }
+
     if (devices.right) {
-      devices.right.close();
+      console.log('Closing right device...');
+      closePromises.push(
+        devices.right.close()
+          .then(() => console.log('Right device closed successfully'))
+          .catch(err => console.error('Failed to close right device:', err))
+      );
     }
+
+    // Wait for all close operations to complete
+    await Promise.all(closePromises);
+    console.log('All devices closed');
+
+    // Small delay to ensure USB cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     setDevices({ left: null, right: null });
     setConnectionState({
@@ -244,6 +266,7 @@ export function useKeyboard() {
       rightHalf: false
     });
     console.log(connectionState.demoMode ? "Demo mode deactivated" : "Hardware disconnected");
+    console.log('Disconnect complete - safe to unplug');
   }
 
   async function sendCommand(
@@ -356,20 +379,40 @@ export function useKeyboard() {
 
     try {
       const packet = getKeycodePacket(layer, row, col);
+      const cmdStartTime = performance.now();
       const response = await viaManagerRef.current.sendCommand(
         device,
         packet,
         VIACommand.DYNAMIC_KEYMAP_GET_KEYCODE
       );
-      return parseKeycode(response);
+      const cmdDuration = performance.now() - cmdStartTime;
+      const keycode = parseKeycode(response);
+
+      // Only log slow operations or errors
+      if (cmdDuration > 100) {
+        console.warn(`    ⚠️ Slow read at ${half} L${layer}R${row}C${col}: ${cmdDuration.toFixed(1)}ms -> 0x${keycode.toString(16)}`);
+      }
+
+      return keycode;
     } catch (err) {
-      console.error(`Failed to read keycode at ${half} L${layer}R${row}C${col}:`, err);
+      console.error(`    Failed to read keycode at ${half} L${layer}R${row}C${col}:`, err);
       return null;
     }
   }
 
   /**
    * Write a single keycode to hardware
+   *
+   * NOTE: RP2040 USB Stack Limitation
+   * The RP2040's USB stack can enter a "stuck" state where HID output reports
+   * (writes) are blocked with NotAllowedError, even though the device appears
+   * connected and HID input reports (reads/typing) work fine.
+   *
+   * This occurs during disconnect/reconnect cycles and is a hardware/firmware
+   * limitation, not a software bug. When detected, we automatically disconnect
+   * and throw USB_STACK_STUCK error with BOOTSEL reset instructions.
+   *
+   * Workaround: BOOTSEL reset (hold BOOT button while plugging in, then unplug)
    */
   async function writeKeycode(
     layer: number,
@@ -395,8 +438,29 @@ export function useKeyboard() {
       );
       console.log(`Successfully wrote keycode ${keycode} to ${half} L${layer}R${row}C${col}`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Failed to write keycode to ${half} L${layer}R${row}C${col}:`, err);
+
+      // Detect RP2040 USB stack stuck state
+      if (err.name === 'NotAllowedError' || err.message?.includes('NotAllowedError')) {
+        console.error(`
+╔═══════════════════════════════════════════════════════════╗
+║ RP2040 USB STACK STUCK - AUTOMATIC CLEANUP            ║
+╠═══════════════════════════════════════════════════════════╣
+║ The keyboard's USB stack has entered a stuck state.      ║
+║ This is a known RP2040 firmware limitation.              ║
+║                                                           ║
+║ Forcing disconnect to prevent further errors...          ║
+╚═══════════════════════════════════════════════════════════╝
+        `);
+
+        // Automatically force disconnect to prevent "zombie connection"
+        await disconnect();
+
+        // Throw a more helpful error
+        throw new Error('USB_STACK_STUCK');
+      }
+
       return false;
     }
   }
@@ -408,7 +472,10 @@ export function useKeyboard() {
     layer: number,
     half: 'left' | 'right' = 'left'
   ): Promise<Record<string, number> | null> {
-    console.log(`>>> readLayerKeymap START: ${half} layer ${layer} <<<`);
+    const readStartTime = performance.now();
+    console.log(`\n╔════════════════════════════════════════════════════════════╗`);
+    console.log(`║  READ LAYER KEYMAP START: ${half.toUpperCase().padEnd(5)} Layer ${layer}              ║`);
+    console.log(`╚════════════════════════════════════════════════════════════╝`);
 
     if (connectionState.demoMode) {
       console.log(`Demo mode: Would read entire keymap for ${half} layer ${layer}`);
@@ -416,8 +483,8 @@ export function useKeyboard() {
     }
 
     const device = devices[half];
-    console.log(`Device for ${half}:`, device ? 'Connected' : 'NULL');
-    console.log(`VIA Manager:`, viaManagerRef.current ? 'Ready' : 'NULL');
+    console.log(` Device for ${half}:`, device ? 'Connected' : 'NULL');
+    console.log(` VIA Manager:`, viaManagerRef.current ? 'Ready' : 'NULL');
 
     if (!device || !viaManagerRef.current) {
       console.error(`Cannot read ${half}: device or VIA manager is null`);
@@ -426,26 +493,54 @@ export function useKeyboard() {
 
     const keymap: Record<string, number> = {};
     let keysRead = 0;
+    let totalOperations = 0;
+    const timings: number[] = [];
 
     try {
+      console.log(`📋 Reading ${PROTOBOARD_ROWS}×${PROTOBOARD_COLS} = ${PROTOBOARD_ROWS * PROTOBOARD_COLS} key positions...\n`);
+
       for (let row = 0; row < PROTOBOARD_ROWS; row++) {
         for (let col = 0; col < PROTOBOARD_COLS; col++) {
+          totalOperations++;
+          const keyId = `L${row}R${col}`;
+          const operationStart = performance.now();
+
           const keycode = await readKeycode(layer, row, col, half);
 
+          const operationTime = performance.now() - operationStart;
+          timings.push(operationTime);
+
           if (keycode !== null && keycode !== 0x00) {
-            const keyId = `L${row}R${col}`;
             keymap[keyId] = keycode;
             keysRead++;
-            console.log(`Read ${half} ${keyId}: 0x${keycode.toString(16)}`);
+            console.log(`   [${totalOperations}/20] ${half} ${keyId}: 0x${keycode.toString(16).padStart(4, '0')} (${operationTime.toFixed(1)}ms)`);
+          } else {
+            console.log(`  ⚪ [${totalOperations}/20] ${half} ${keyId}: empty/0x00 (${operationTime.toFixed(1)}ms)`);
           }
         }
       }
-      console.log(`Successfully read ${keysRead} keys from ${half} layer ${layer}`);
-      console.log(`Complete keymap:`, keymap);
-      console.log(`>>> readLayerKeymap SUCCESS: ${half} layer ${layer} <<<`);
+
+      const totalTime = performance.now() - readStartTime;
+      const avgTime = timings.reduce((a, b) => a + b, 0) / timings.length;
+      const minTime = Math.min(...timings);
+      const maxTime = Math.max(...timings);
+
+      console.log(`\n╔════════════════════════════════════════════════════════════╗`);
+      console.log(`║  READ LAYER KEYMAP SUCCESS: ${half.toUpperCase().padEnd(5)} Layer ${layer}          ║`);
+      console.log(`╚════════════════════════════════════════════════════════════╝`);
+      console.log(`📊 Statistics:`);
+      console.log(`  • Keys with values: ${keysRead}/${totalOperations}`);
+      console.log(`  • Total time: ${totalTime.toFixed(2)}ms (${(totalTime/1000).toFixed(2)}s)`);
+      console.log(`  • Average per key: ${avgTime.toFixed(2)}ms`);
+      console.log(`  • Fastest read: ${minTime.toFixed(2)}ms`);
+      console.log(`  • Slowest read: ${maxTime.toFixed(2)}ms`);
+      console.log(`  • Complete keymap:`, keymap);
       return keymap;
     } catch (err) {
-      console.error(`Failed to read keymap for ${half} layer ${layer}:`, err);
+      const totalTime = performance.now() - readStartTime;
+      console.error(`\n Failed to read keymap for ${half} layer ${layer}:`, err);
+      console.error(`  • Failed after ${totalOperations} operations`);
+      console.error(`  • Time before error: ${totalTime.toFixed(2)}ms`);
       console.log(`>>> readLayerKeymap ERROR: ${half} layer ${layer} <<<`);
       return null;
     }
@@ -498,9 +593,15 @@ export function useKeyboard() {
       console.log(`Successfully wrote ${keysWritten}/${Object.keys(keymap).length} keys to ${half} layer ${layer}`);
       console.log(`>>> writeLayerKeymap SUCCESS: ${half} layer ${layer} <<<`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Failed to write keymap for ${half} layer ${layer}:`, err);
       console.log(`>>> writeLayerKeymap ERROR: ${half} layer ${layer} <<<`);
+
+      // Re-throw USB stack stuck error so it can be handled at higher level
+      if (err.message === 'USB_STACK_STUCK') {
+        throw err;
+      }
+
       return false;
     }
   }

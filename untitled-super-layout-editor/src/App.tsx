@@ -62,10 +62,10 @@ function AppContent() {
   const handleConnectHardware = async () => {
     // CRITICAL FIX: Always disconnect first to avoid stale device objects
     console.log('Disconnecting any existing devices before connecting...');
-    disconnect();
+    await disconnect();
 
-    // Small delay to ensure cleanup completes
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Small delay to ensure cleanup completes (now included in disconnect function)
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     const success = await connectHardware();
     if (!success) {
@@ -77,9 +77,14 @@ function AppContent() {
     connectDemo();
   };
 
-  const handleDisconnect = () => {
-    disconnect();
-    setSelectedKey(null);
+  const handleDisconnect = async () => {
+    setIsDisconnecting(true);
+    try {
+      await disconnect();
+      setSelectedKey(null);
+    } finally {
+      setIsDisconnecting(false);
+    }
   };
 
   const handleKeySelect = (keyData: KeyPosition, half: 'left' | 'right') => {
@@ -113,6 +118,7 @@ function AppContent() {
   };
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const handleSyncFromHardware = async () => {
     if (!connectionState.connected || connectionState.demoMode) {
@@ -120,20 +126,32 @@ function AppContent() {
       return;
     }
 
-    console.log('=== SYNC FROM HARDWARE START ===');
+    const syncStartTime = performance.now();
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║           SYNC FROM HARDWARE - START                      ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
     console.log('Current layer:', currentLayer);
     console.log('Current layer state BEFORE sync:', layers[currentLayer]);
+    console.log('Timestamp:', new Date().toISOString());
 
     setIsSyncing(true);
     try {
       // Read from both halves for current layer
-      console.log('Reading left half keymap...');
+      console.log('\n📖 Reading left half keymap...');
+      const leftStartTime = performance.now();
       const leftKeymap = await readLayerKeymap(currentLayer, 'left');
-      console.log('Left keymap received:', leftKeymap);
+      const leftDuration = performance.now() - leftStartTime;
+      console.log(` Left keymap received in ${leftDuration.toFixed(2)}ms`);
+      console.log('Left keymap:', leftKeymap);
+      console.log('Left keys read:', leftKeymap ? Object.keys(leftKeymap).length : 0);
 
-      console.log('Reading right half keymap...');
+      console.log('\n Reading right half keymap...');
+      const rightStartTime = performance.now();
       const rightKeymap = await readLayerKeymap(currentLayer, 'right');
-      console.log('Right keymap received:', rightKeymap);
+      const rightDuration = performance.now() - rightStartTime;
+      console.log(` Right keymap received in ${rightDuration.toFixed(2)}ms`);
+      console.log('Right keymap:', rightKeymap);
+      console.log('Right keys read:', rightKeymap ? Object.keys(rightKeymap).length : 0);
 
       if (leftKeymap || rightKeymap) {
         // Convert numeric keycodes to strings and merge
@@ -167,33 +185,49 @@ function AppContent() {
           }
         }
 
+        console.log('\n Merging keymaps...');
         console.log('Merged keymap to update:', mergedKeymap);
         console.log('Total keys to update:', Object.keys(mergedKeymap).length);
 
         // Update the current layer with the synced keymap
-        console.log('Calling updateLayer...');
+        console.log('\nCalling updateLayer...');
         updateLayer(currentLayer, mergedKeymap);
         console.log('updateLayer called successfully');
 
-        console.log('Synced from hardware:', {
-          leftKeys: leftKeymap ? Object.keys(leftKeymap).length : 0,
-          rightKeys: rightKeymap ? Object.keys(rightKeymap).length : 0,
-          mergedKeys: Object.keys(mergedKeymap).length
-        });
-        console.log('=== SYNC FROM HARDWARE SUCCESS ===');
-        alert(`Successfully synced Layer ${currentLayer} from hardware!`);
+        const totalDuration = performance.now() - syncStartTime;
+        console.log('\n╔════════════════════════════════════════════════════════════╗');
+        console.log('║           SYNC FROM HARDWARE - SUCCESS                    ║');
+        console.log('╚════════════════════════════════════════════════════════════╝');
+        console.log(' Summary:');
+        console.log('  • Left keys:', leftKeymap ? Object.keys(leftKeymap).length : 0);
+        console.log('  • Right keys:', rightKeymap ? Object.keys(rightKeymap).length : 0);
+        console.log('  • Total merged keys:', Object.keys(mergedKeymap).length);
+        console.log('  • Total time:', `${totalDuration.toFixed(2)}ms (${(totalDuration/1000).toFixed(2)}s)`);
+        console.log('  • Avg time per key:', `${(totalDuration / Object.keys(mergedKeymap).length).toFixed(2)}ms`);
+        alert(`Successfully synced Layer ${currentLayer} from hardware!\n\nRead ${Object.keys(mergedKeymap).length} keys in ${(totalDuration/1000).toFixed(2)}s`);
       } else {
-        console.error('Both left and right keymaps are null');
-        console.log('=== SYNC FROM HARDWARE FAILED ===');
+        const totalDuration = performance.now() - syncStartTime;
+        console.error('\n Both left and right keymaps are null');
+        console.log('╔════════════════════════════════════════════════════════════╗');
+        console.log('║           SYNC FROM HARDWARE - FAILED                     ║');
+        console.log('╚════════════════════════════════════════════════════════════╝');
+        console.log('  • Time elapsed:', `${totalDuration.toFixed(2)}ms`);
         alert('Failed to read keymap from hardware');
       }
     } catch (error) {
-      console.error('Sync from hardware error:', error);
-      console.log('=== SYNC FROM HARDWARE ERROR ===');
+      const totalDuration = performance.now() - syncStartTime;
+      console.error('\n Sync from hardware error:', error);
+      console.log('╔════════════════════════════════════════════════════════════╗');
+      console.log('║           SYNC FROM HARDWARE - ERROR                      ║');
+      console.log('╚════════════════════════════════════════════════════════════╝');
+      console.log('  • Error:', error);
+      console.log('  • Time before error:', `${totalDuration.toFixed(2)}ms`);
       alert('Error syncing from hardware. Check console for details.');
     } finally {
       setIsSyncing(false);
-      console.log('isSyncing set to false');
+      const totalDuration = performance.now() - syncStartTime;
+      console.log('\n Total operation time:', `${totalDuration.toFixed(2)}ms (${(totalDuration/1000).toFixed(2)}s)`);
+      console.log('isSyncing set to false\n');
     }
   };
 
@@ -279,9 +313,25 @@ function AppContent() {
       console.error('Sync to hardware error:', error);
       console.log('=== SYNC TO HARDWARE ERROR ===');
 
+      // Detect RP2040 USB stack stuck state
+      if (error?.message === 'USB_STACK_STUCK') {
+        alert(`RP2040 USB Stack Stuck\n\n` +
+          `The keyboard's USB has entered a stuck state.\n` +
+          `This is a known RP2040 hardware limitation.\n\n` +
+          `The connection has been automatically disconnected.\n\n` +
+          `FIX (BOOTSEL Reset):\n` +
+          `1. Unplug keyboard\n` +
+          `2. Hold BOOTSEL (BOOT) button\n` +
+          `3. Plug in USB while holding BOOTSEL\n` +
+          `4. Release BOOTSEL (RPI-RP2 drive appears)\n` +
+          `5. Eject RPI-RP2 drive\n` +
+          `6. Unplug keyboard\n` +
+          `7. Plug back in normally\n` +
+          `8. Click "Connect Hardware" again`);
+      }
       // Provide specific error messages for common issues
-      if (error?.name === 'NotAllowedError' || error?.message?.includes('NotAllowedError')) {
-        alert(`⚠️ Cannot write to keyboard!\n\nThe device is connected but write permission was denied.\n\nThis usually means:\n• Another app (like VIA) has exclusive access\n• Device needs to be reconnected\n\nFix:\n1. Close any other keyboard configurators\n2. Click "Disconnect" below\n3. Unplug and replug keyboard\n4. Click "Connect Hardware" again`);
+      else if (error?.name === 'NotAllowedError' || error?.message?.includes('NotAllowedError')) {
+        alert(`Cannot write to keyboard!\n\nThe device is connected but write permission was denied.\n\nThis usually means:\n• Another app (like VIA) has exclusive access\n• Device needs to be reconnected\n\nFix:\n1. Close any other keyboard configurators\n2. Click "Disconnect" below\n3. Unplug and replug keyboard\n4. Click "Connect Hardware" again`);
       } else {
         alert('Error syncing to hardware. Check console for details.');
       }
@@ -696,7 +746,8 @@ function AppContent() {
               {/* Hardware sync buttons - only show when connected */}
               {connectionState.connected && !connectionState.demoMode && (
                 <>
-                  <motion.button
+                  {/* Sync from Hardware button removed - function kept in code for future use */}
+                  {/* <motion.button
                     onClick={handleSyncFromHardware}
                     disabled={isSyncing}
                     className={cn(
@@ -716,7 +767,7 @@ function AppContent() {
                     <span className={theme.colors.text}>
                       {isSyncing ? 'Syncing...' : 'Sync from HW'}
                     </span>
-                  </motion.button>
+                  </motion.button> */}
 
                   <motion.button
                     onClick={handleSyncToHardware}
@@ -793,17 +844,19 @@ function AppContent() {
                     <>
                       <Play className="w-4 h-4 text-cyan-400" />
                       <span className={cn("text-sm font-medium", theme.colors.text)}>
-                        Demo Mode
+                        {isDisconnecting ? 'Disconnecting...' : 'Demo Mode'}
                       </span>
                       <motion.button
                         onClick={handleDisconnect}
+                        disabled={isDisconnecting}
                         className={cn(
                           "ml-2 p-1 rounded-md transition-colors",
-                          "hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                          "hover:bg-red-500/20 text-red-400 hover:text-red-300",
+                          isDisconnecting && "opacity-50 cursor-not-allowed"
                         )}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        title="Exit Demo Mode"
+                        whileHover={!isDisconnecting ? { scale: 1.1 } : {}}
+                        whileTap={!isDisconnecting ? { scale: 0.95 } : {}}
+                        title={isDisconnecting ? "Disconnecting..." : "Exit Demo Mode"}
                       >
                         <X className="w-3 h-3" />
                       </motion.button>
@@ -812,8 +865,22 @@ function AppContent() {
                     <>
                       <Wifi className="w-4 h-4 text-emerald-400" />
                       <span className={cn("text-sm font-medium", theme.colors.text)}>
-                        Hardware Connected
+                        {isDisconnecting ? 'Disconnecting...' : 'Hardware Connected'}
                       </span>
+                      <motion.button
+                        onClick={handleDisconnect}
+                        disabled={isDisconnecting}
+                        className={cn(
+                          "ml-2 p-1 rounded-md transition-colors",
+                          "hover:bg-red-500/20 text-red-400 hover:text-red-300",
+                          isDisconnecting && "opacity-50 cursor-not-allowed"
+                        )}
+                        whileHover={!isDisconnecting ? { scale: 1.1 } : {}}
+                        whileTap={!isDisconnecting ? { scale: 0.95 } : {}}
+                        title={isDisconnecting ? "Disconnecting... Please wait before unplugging" : "Disconnect Hardware"}
+                      >
+                        <X className="w-3 h-3" />
+                      </motion.button>
                     </>
                   )}
                 </motion.div>
