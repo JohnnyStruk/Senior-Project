@@ -17,10 +17,6 @@
 // Wait for USB to fully enumerate before starting keyboard operations
 #define WAIT_FOR_USB
 
-// Longer debounce for matrix stability (helps prevent USB noise issues)
-#define DEBOUNCE 10
-
-
 // VIA Protocol Optimization
 
 // Ensure proper buffer size for VIA RAW HID communication
@@ -36,9 +32,6 @@
 #define DYNAMIC_KEYMAP_EEPROM_MAX_ADDR 2047
 
 // Additional USB Settings
-
-// Force NKRO (helps ensure consistent USB descriptor)
-#define FORCE_NKRO
 
 // USB polling interval (1ms for responsive communication)
 #define USB_POLLING_INTERVAL_MS 1
