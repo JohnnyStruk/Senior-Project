@@ -181,11 +181,11 @@ export const PROTOBOARD_RIGHT_DEFAULT: LayerKeymap = {
   'right-2-4': 'KC_DOT',
 
   // Row 3: Esc Space Alt Ctrl Backspace
-  'right-3-0': 'KC_ESC',
-  'right-3-1': 'KC_SPC',
-  'right-3-2': 'KC_RALT',
-  'right-3-3': 'KC_RCTL',
-  'right-3-4': 'KC_BSPC',
+  'right-3-0': 'KC_ENT',
+  'right-3-1': 'KC_BSPC',
+  'right-3-2': 'KC_DEL',
+  'right-3-3': 'KC_SCLN',
+  'right-3-4': 'KC_QUOT',
 };
 
 // Combine protoboard defaults
